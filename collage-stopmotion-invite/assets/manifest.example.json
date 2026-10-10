@@ -1,0 +1,18 @@
+{
+  "template": "collage-stopmotion-invite",
+  "output": {"width":1080,"height":1920,"fps":30,"duration":38.43},
+  "bgm": {"file":"assets/bgm.mp3","bpm":null,"offset_sec":0.0},
+  "names": {"groom":"{新郎名}","bride":"{新娘名}","groom_tag":"{新郎拼音大写}","bride_tag":"{新娘拼音大写}"},
+  "scenes": [
+    {"id":"S1","slots":{"title_en":"WEDDING INVITATION","names_line":"{新郎拼音} & {新娘拼音}","prop_tv":"builtin:retro_tv"}},
+    {"id":"S2","slots":{"headline":"WE GOT MARRIED","person_main":"assets/S2_person.jpg","prop_1":"builtin:polaroid","doodle":"builtin:pink_hearts"}},
+    {"id":"S3","slots":{"letter_zh":"亲爱的家人与挚友\n我们要结婚啦！\n感谢你们一路的陪伴\n给予的无尽温暖与支持\n……\n纸短情长，静候佳期\n我们婚礼见！","prop_1":"builtin:dried_flowers"}},
+    {"id":"S4","slots":{"landscape":"assets/S4_landscape.jpg","quote_en":"Love in Summer Bloom","person_main":"assets/S4_person.jpg"}},
+    {"id":"S5","slots":{"landscape":"assets/S5_landscape.jpg","quote_en":"Haply I think on thee\nand then my state","person_A":"assets/S5_A.jpg","person_B":"assets/S5_B.jpg"}},
+    {"id":"S6","slots":{"landscape":"assets/S6_landscape.jpg","quote_en":"Journeys end in\nlovers meeting","person_A":"assets/S6_A.jpg","person_B":"assets/S6_B.jpg"}},
+    {"id":"S7","slots":{"landscape":"assets/S7_landscape.jpg","quote_en":"Love looks with mind","person_A":"assets/S7_A.jpg","person_B":"assets/S7_B.jpg"}},
+    {"id":"S8","slots":{"landscape":"assets/S8_landscape.jpg","quote_en":"Ever thine\nEver mine\nEver ours","person_main":"assets/S8_person.jpg"}},
+    {"id":"S9","slots":{"schedule_title":"婚礼流程","schedule":["10:58 迎宾&签到","12:08 婚礼仪式","12:30 午宴开始"],"person_main":"assets/S9_person.jpg","prop_car":"builtin:red_vintage_car","prop_bottle":"builtin:champagne","prop_glasses":"builtin:coupe_glasses"}},
+    {"id":"S10","slots":{"date":"婚礼日期：{YYYY.MM.DD}","venue":"婚礼地点：{酒店名}","hall":"{厅名}","closing_en":"See you at the wedding","person_main":"assets/S10_person.jpg","swatches":["#F2AABD","#99B3D2","#ACA078","#A95842","#F0DCD2"],"prop_vinyl":"builtin:vinyl_x3","prop_wine":"builtin:red_wine"}}
+  ]
+}
