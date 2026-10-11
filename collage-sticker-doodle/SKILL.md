@@ -1,11 +1,11 @@
 ---
 name: collage-sticker-doodle
-description: 通用"贴纸涂鸦拼贴定格"竖屏短视频生成器（HTML Canvas + Playwright + FFmpeg）。真人抠图白边贴纸 + 撕纸大色块 + 风景照拼贴 + 手写深墨字 + 程序化贴纸/涂鸦，按 BGM 节拍定格抖动、A/B 两位闪切。没有预设主题：agent 读用户的描述和素材，写一份故事板 plan.json（场合、情绪、风格包、色彩倾向、每场用什么素材、写什么字、贴什么贴纸、怎么转场和闪），校验后渲染，seed 只随机故事板没定的细节；5 个风格包（手账 / 杂志剪报 / 复古海报 / 街头涂鸦 / 胶片小志），带标签的程序化元素库（气球、蛋糕、票根、戒指、爪印、雨伞、雨滴、学士帽……）。另含锁定风格包 invite-classic：逐帧复刻 38.43 秒婚礼请柬参考片（小红书 末路狂猫 风格：TV 开场、剪字标题、钢笔信笺、A/B 闪、流程卡、色卡结尾），agent 只填照片/人物/文案。用户说"把这些照片做成拼贴/贴纸/涂鸦/手账风/杂志拼贴/定格卡点视频"、"婚礼请柬视频""末路狂猫那种风格""拼贴定格请柬"，任何场合（婚礼、旅行、毕业、宠物、生日、纪念日、日常 vlog、雨天散步……）都用它。
+description: 通用"贴纸涂鸦拼贴定格"竖屏短视频生成器（HTML Canvas + Playwright + FFmpeg）。真人抠图白边贴纸 + 撕纸大色块 + 风景照拼贴 + 手写深墨字 + 程序化贴纸/涂鸦，按 BGM 节拍定格抖动、A/B 两位闪切。渲染前先跑素材预检（缺什么、哪张不合格、哪张放哪场），用户确认选片后再做。没有预设主题：agent 读用户的描述和素材，写一份故事板 plan.json（场合、情绪、风格包、色彩倾向、每场用什么素材、写什么字、贴什么贴纸、怎么转场和闪），校验后渲染，seed 只随机故事板没定的细节；5 个风格包（手账 / 杂志剪报 / 复古海报 / 街头涂鸦 / 胶片小志），带标签的程序化元素库（气球、蛋糕、票根、戒指、爪印、雨伞、雨滴、学士帽……）。另含锁定风格包 invite-classic：逐帧复刻 38.43 秒婚礼请柬参考片（小红书 末路狂猫 风格：TV 开场、剪字标题、钢笔信笺、A/B 闪、流程卡、色卡结尾），agent 只填照片/人物/文案。用户说"把这些照片做成拼贴/贴纸/涂鸦/手账风/杂志拼贴/定格卡点视频"、"婚礼请柬视频""末路狂猫那种风格""拼贴定格请柬"，任何场合（婚礼、旅行、毕业、宠物、生日、纪念日、日常 vlog、雨天散步……）都用它。
 ---
 
-# 贴纸涂鸦拼贴定格 · 通用生成器（collage-sticker-doodle v3）
+# 贴纸涂鸦拼贴定格 · 通用生成器（collage-sticker-doodle v4）
 
-从 collage-stopmotion-invite v8 泛化而来：**手艺不变（定格 boil、白边抠图、撕纸、深墨手写、全部 P0），版式放开**。一次渲染 = manifest（素材 + BGM）+ **故事板 plan.json（agent 根据用户描述写）** + seed。v2 去掉了预设主题：结构、文案、贴纸由故事板决定，seed 只填细节；同故事板同 seed 逐像素复现。
+v4 新增**素材预检 + 选片确认**（工作流程第 0 步，渲染前必须拿到用户确认）。从 collage-stopmotion-invite v8 泛化而来：**手艺不变（定格 boil、白边抠图、撕纸、深墨手写、全部 P0），版式放开**。一次渲染 = manifest（素材 + BGM）+ **故事板 plan.json（agent 根据用户描述写）** + seed。v2 去掉了预设主题：结构、文案、贴纸由故事板决定，seed 只填细节；同故事板同 seed 逐像素复现。
 
 ## ⛔ P0 硬规则（故事板、风格包、seed 都不许破坏；逐帧审计，违反即 FAIL）
 | 规则 | 内容 | 怎么保证 |
@@ -44,6 +44,7 @@ invite-classic 用 v8 的槽位 manifest（`assets/invite-classic.manifest.examp
 ## 文件地图
 | 什么时候读 | 文件 |
 |---|---|
+| **用户问要准备多少素材 / 预检和选片** | `references/asset_requirements.md`（最少/推荐/最佳数量表、质量规则、选片规则）+ `scripts/precheck_assets.py` |
 | 写 manifest、准备素材 | `references/manifest.md`（字段、素材约束、A/B 对的要求） |
 | 选风格包 / 理解每个包长什么样 | `references/style_packs.md` |
 | 加贴纸或涂鸦种类 | `references/elements.md` |
@@ -53,9 +54,16 @@ invite-classic 用 v8 的槽位 manifest（`assets/invite-classic.manifest.examp
 | 色块、撕纸、照片遮罩 | `references/background_collage.md` |
 | 手艺 DNA（必须保留的签名） | `references/signature.md` |
 | 渲染 | `scripts/render_template/`：`collage.js`（计划 + 场景 + 审计）、`packs.js`、`index.html`、`run.py` |
-| 工具 | `scripts/cutout.py` 抠图（自动跑 P0-6）、`scripts/person_check.py`、`scripts/tv_screen.py`、`scripts/validate_manifest.py`（素材）、`scripts/validate_plan.py`（故事板 + 元素库列表）、`scripts/qa_compare.py` |
+| 工具 | `scripts/cutout.py` 抠图（自动跑 P0-6）、`scripts/person_check.py`、`scripts/tv_screen.py`、`scripts/precheck_assets.py`（素材预检/选片/拼图）、`scripts/validate_manifest.py`（素材）、`scripts/validate_plan.py`（故事板 + 元素库列表）、`scripts/qa_compare.py` |
 
-## 工作流程：读 prompt/素材 → 写故事板 → 校验 → 渲染 → QA
+## 工作流程：预检选片 → 读 prompt/素材 → 写故事板 → 校验 → 渲染 → QA
+0. **素材预检 + 选片（v4，每次必做，在写故事板之前）**：
+   `python scripts/precheck_assets.py <素材目录或文件...> --mode invite-classic|free [--copy copy.json] [--duration 38] [--cut cut/] --out precheck/`
+   （需要 mediapipe + scipy；`copy.json` 放用户给的名字/日期/地点/场合等。）把 `precheck/report.md` **原样发给用户**，同时发 `precheck/contact_sheet.jpg` 拼图。
+   - 退出码 10（什么都没给）：报告里有完整的上传清单，让用户上传，不要开工。
+   - 11（不够）/ 12（不够且有不合格照片）：告诉用户缺什么、缺几张、哪几张要换；用户明确说"就用这些"才继续（复用/纯色块顶上，并说明效果打折）。
+   - 0：报告里有选片表（哪张放哪个场景/角色）、被丢掉的照片和原因、〔占位〕文案。**等用户回复确认（或改选片/文案）后才进入渲染**；用户改了就按改的来，`selection.json` 就是后面 manifest/plan 的素材分配。
+   数量和质量标准见 `references/asset_requirements.md`（用户问"要准备多少素材"时直接给那张表）。
 1. **读**：用户的描述（场合、情绪、指定的风格或文案）+ 素材（每张风景是哪里、每组人物什么姿态、有没有 A/B 对）+ BGM 长度。缺关键信息才问（一次 ≤3 个）。
 2. **抠图（P0-6 源图侧）**：`python scripts/cutout.py in.jpg cut/<name>.png [--expect 2]`；A/B 对命名 `<name>_A` / `<name>_B`。失败换素材。
 3. **manifest**：照 `assets/manifest.example.json` 写素材清单（places 的 `subject` 地标框、`ground` 地面线；people 的 A/B 与 src；bgm 的 T / offset / duration_sec）。`python scripts/validate_manifest.py manifest.json`。
