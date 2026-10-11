@@ -15,6 +15,9 @@ async def main(a):
     seed=a.seed if a.seed is not None else random.randint(1,2**31-1); print("SEED",seed)
     port=random.randint(20000,40000); serve(port,ROOT); os.makedirs(a.outdir,exist_ok=True)
     man=json.load(open(a.manifest)); man.setdefault("style",{})["seed"]=seed
+    lk=a.lock_from or man.get("style",{}).get("personLock")   # v9 person lock: approved placement from a previous render_meta.json
+    if lk:
+        lay=json.load(open(lk))["layout"]; man["lock"]={k:{"feet":v["feet"],"pscale":v["pscale"],"pos":v["pos"]} for k,v in lay.items() if v.get("pos")}; print("person lock from",lk,"->",sorted(man["lock"]))
     async with async_playwright() as p:
         b=await p.chromium.launch(); pg=await b.new_page(viewport={"width":1080,"height":1920})
         pg.on("console",lambda m:print("console:",m.text)); pg.on("pageerror",lambda e:print("PAGEERR",e))
@@ -60,5 +63,5 @@ async def main(a):
         if viol: sys.exit(3)
         if p6 and any(not x["ok"] for x in p6): print("P0-6 FAIL:",[(x["scene"],x["f"],x["errors"]) for x in p6 if not x["ok"]]); sys.exit(4)
 if __name__=="__main__":
-    ap=argparse.ArgumentParser(); ap.add_argument("frames"); ap.add_argument("outdir"); ap.add_argument("--seed",type=int); ap.add_argument("--manifest",default=os.path.join(ROOT,"manifest.json")); ap.add_argument("--meta"); ap.add_argument("--person-check",action="store_true",help="P0-6：渲染后对每场景落位帧+每个 A/B/跳动帧做人物完整性检查（失败退出码 4）"); ap.add_argument("--person-sheet",help="P0-6 人物检查拼图输出路径")
+    ap=argparse.ArgumentParser(); ap.add_argument("frames"); ap.add_argument("outdir"); ap.add_argument("--seed",type=int); ap.add_argument("--manifest",default=os.path.join(ROOT,"manifest.json")); ap.add_argument("--meta"); ap.add_argument("--person-check",action="store_true",help="P0-6：渲染后对每场景落位帧+每个 A/B/跳动帧做人物完整性检查（失败退出码 4）"); ap.add_argument("--person-sheet",help="P0-6 人物检查拼图输出路径"); ap.add_argument("--lock-from",help="v9：上一次通过审批的 render_meta.json；锁定人物 A/B 位置、缩放、脚线（只换风景/道具时用）")
     asyncio.run(main(ap.parse_args()))

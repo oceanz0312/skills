@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """人物抠图 + 统一暖调 + 手账白边（整对情侣合成一张贴纸）。
-用法: python cutout.py in.jpg out.png [--width 1080] [--model auto] [--sticker-frac 0.6] [--grade film-warm]
+用法: python cutout.py in.jpg out.png [--width 1080] [--model auto] [--sticker-frac 0.6] [--grade none|film-warm]（v4.1 默认 none：保留原色）
 输出: out.png（带白边贴纸）、out.mask.png（源图分辨率 mask）和 out.check.json（v7 人物完整性检查）。
 - v7：抠完立即跑 person_check（姿态关键点 + mask 连通性 + 边缘裁切）。不通过就依次换 rembg 模型（u2net_human_seg / isnet-general-use / birefnet-portrait / u2net）和合并距离（0.12 → 0.30 对角线），全部失败退出码 3：必须换素材。
 - --model auto：低饱和（黑白/棕褐，sat<0.09）或很暗（平均亮度<0.20）时用 u2net_human_seg，否则 isnet-general-use。暗光婚礼照、深色西装用 isnet 会被抠掉。
 - 合并：保留最大连通域 + 靠近它的较大连通域（≥3% 面积，距离 ≤12% 对角线），再逐步加大白边闭运算，直到白边是一整块——两个人永远是一张贴纸。
-- 调色 film-warm：所有人物照统一成同一种胶片暖调；黑白/棕褐照片会被着成暖色，彩色照降饱和后叠同一套暖色曲线，避免片中一张彩一张黑白。
+- 调色（v4.1 默认 none = 人物保留原片颜色；只有用户明确要统一暖调才传 --grade film-warm）film-warm：所有人物照统一成同一种胶片暖调；黑白/棕褐照片会被着成暖色，彩色照降饱和后叠同一套暖色曲线，避免片中一张彩一张黑白。
 白边 = 成片宽 0.97%（换算到贴纸在成片中的尺寸），外圈 1.5px rgba(0,0,0,.25) 暗边。依赖: pillow, numpy, scipy；rembg（--no-rembg 时输入须为带 alpha 的 PNG）。"""
 import argparse, numpy as np
 from PIL import Image, ImageFilter
@@ -43,7 +43,7 @@ def main():
     ap.add_argument("--width",type=int,default=1080); ap.add_argument("--no-rembg",action="store_true")
     ap.add_argument("--border",type=int,default=None); ap.add_argument("--model",default="auto")
     ap.add_argument("--sticker-frac",type=float,default=0.6,help="贴纸在成片中的宽度占比；A/B 必须同值")
-    ap.add_argument("--grade",default="film-warm",choices=["film-warm","none"])
+    ap.add_argument("--grade",default="none",choices=["none","film-warm"])   # v4.1: people keep original colours by default; film tone is for landscapes only
     ap.add_argument("--expect",type=int,default=2,help="照片里应完整出现的人数（情侣=2）"); ap.add_argument("--no-check",action="store_true"); a=ap.parse_args()
     src=Image.open(a.inp); stem=a.out.rsplit(".",1)[0]
     # v7: completeness check (person_check.judge) with fallback over models / merge params; report -> <out>.check.json

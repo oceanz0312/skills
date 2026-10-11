@@ -23,7 +23,7 @@ bbox 写成 `[x, y, w, h]`，都是画面宽、高的比例，参考帧是原片
 | 规则 | 级别 |
 |---|---|
 | A/B 两张照片**同一场景、同一组拍摄、同服装**，两人位置要明显不同（换站位、一前一后、拉远）；渲染时还会把 A/B 放到不同位置 | 【硬锁定】 |
-| 人物照在抠图时统一调成胶片暖调（黑白照着色），不用事先统一色调 | 【v4】 |
+| 【v9】人物照默认保留原片颜色（`cutout.py --grade none`），只有风景照加胶片暖调；P0-8 饱和度比 ≥0.9。用户明确要统一暖调时设 `style.personGrade:"film-warm"` 并抠图传 `--grade film-warm`（黑白照着色） | 【v9，原 v4 默认暖调】 |
 | 同一场景人物脚底线对齐（差 ≤1% H）；画面底边可以裁掉脚踝以下，但 A/B 要裁在同一条线上 | 【硬锁定】 |
 | 人物顶部留头顶空间 ≥3% H，不要让头碰到上面的文字带 | 【硬锁定】 |
 | 背景简单（纯墙、天空、草地），主体和背景对比明显，没有大面积头发、婚纱和背景融在一起 | 【硬锁定】（不满足就警告） |
@@ -124,3 +124,10 @@ bbox 写成 `[x, y, w, h]`，都是画面宽、高的比例，参考帧是原片
 - 人物照约束新增：两个人都要完整入画（至少到大腿，身体只能被**底边**裁）；不要选一人被另一人大面积挡住的照片（抠图常把被挡的人切成头+手臂）；不要选人在原图左/右/上边被裁的照片。
 - 半身照（腰部被原图底边裁）只能放在贴纸底边贴着画面底边的位置，否则成片里会出现一条悬空的直线切口——P0-6 会给出"关键点在源照片外"警告，必须在拼图里确认。
 - 依赖：`pip install mediapipe`，模型 `pose_landmarker_full.task`（https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task，放到 /workspace/models/ 或设 POSE_MODEL）；Linux 需 libegl1。
+
+
+## v9 新槽位与开关
+- `Sx.slots.prop_user`：用户道具贴纸（宠物、玩偶等），字符串路径或 `{file, width, anchor, rot}`。必须是透明 PNG（`python scripts/extract_sticker.py sheet.png cut/props --names a b`：纯色底上已带白边的贴纸拼图 → 每个一张；保留白边与原色）。它就是该场景唯一的道具（替换原随机道具；原道具的随机数照常消耗，所以场景其他布局不变）。默认 `anchor:"upper-right"`、`width:0.24`：目标点在人物头顶最高点上方偏右；在 ±240px / 360px 范围内找最近的合规位置——全部 A/B 位置 × 3 个 boil 状态都：完整在画内（含边距）、不碰文字/信息/其他道具（14px 间隙）、盖住风景主体 ≤2%、与人物外框重叠 ≤15%（道具先画，人物在上，P0-7 零遮挡）。实际偏移写进 `render_meta.json → layout.Sx.userProps[].nudge`（`dx,dy,gapToHeads`），非 0 要在报告里说明。
+- `style.personLock` / `run.py --lock-from meta.json`：从上一次认可的 render_meta 读 `layout.Sx.{feet,pscale,pos}`，跳过人物布局随机，A/B 位置、缩放、脚线逐像素不变。只在换风景/道具时用；换人物照片时不要锁。
+- 用户自己拍的风景照（里面有路人/动物）：优先收紧 `landscape_subject`、调 `landscape_ground`/裁切，不要移动锁定的人物；主体被人物挡住时在报告中列出。
+- `style.personGrade`、`style.dropTV`、`style.landscapeCount`、`style.nonLandscapeBg`：覆盖开关，见 SKILL.md「v9 默认规则与覆盖开关」；`validate_manifest.py` 对每个覆盖给 WARN。
