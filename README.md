@@ -1,6 +1,6 @@
-# skills（源码仓库，私有）
+# skills
 
-存放 Agent Skills 的原始源码。线上分发由 skills 注册表负责：https://skills.zdychanges.workers.dev/skills
+个人 Agent Skills 合集（私有仓库）。每个目录是一个独立的 skill，可直接复制到任何支持 Agent Skills 的工具里使用。SKILL.md 里引用的文件全部用相对路径，整个目录拷走即可离线使用。
 
 ## 结构
 
@@ -12,37 +12,70 @@
   assets/           # 模板、示例、图片
 ```
 
-## 路径同构
-
-每个 skill 目录与线上地址一一对应：
-
-```
-本地：<slug>/<相对路径>
-线上：https://skills.zdychanges.workers.dev/skills/<slug>/<相对路径>
-```
-
-例如 `collage-stopmotion-invite/references/timeline.md` ↔ `https://skills.zdychanges.workers.dev/skills/collage-stopmotion-invite/references/timeline.md`。
-SKILL.md 里用相对路径引用文件，离线（本地目录）和在线（注册表）都能被 Agent 直接消费。
-
-## 发布到注册表
-
-```bash
-cd <slug> && zip -r ../<slug>.zip . -x '*/__pycache__/*' '.DS_Store'
-curl -X PUT --data-binary @../<slug>.zip \
-  -H 'Content-Type: application/zip' \
-  "https://skills.zdychanges.workers.dev/skills/<slug>?token=<TOKEN>"
-```
-
-`<TOKEN>` 为注册表发布令牌，切勿提交到仓库。
-
 ## Skills 列表
 
-| slug | 说明 |
-|---|---|
-| `zh-ai-tool-viral-post` | 中文 AI 工具种草爆款推文写作风格（X / 小红书 / 即刻短帖）；`references/source-analysis.md` 为公开 X 账号的风格分析 |
-| `collage-stopmotion-invite` | 拼贴风定格动画（婚礼请柬类）视频风格：素材约束 + 逐帧锁定的节奏与风格规范，供 Opus 5.5 写代码生成视频 |
-| `collage-sticker-doodle` | 通用贴纸涂鸦拼贴定格视频生成器（v3）：agent 读描述与素材写故事板 plan.json，5 个可变风格包；另含锁定包 invite-classic（逐帧复刻 collage-stopmotion-invite v8 婚礼请柬）；全部 P0 审计与 QA 共用 |
-| `video-style-distill` | 风格蒸馏元 skill：把视频 / 图片 / 设计稿 / 品牌手册 / 设计语言描述蒸馏成可复用的视频生成 skill（测量脚本：切点、视觉网格 T、boil、A/B、转场、对拍、色板、拼图、静态图动效推导；渲染器脚手架、plan 校验器、QA 骨架；产出模板） |
+| slug | 一句话 | 状态 |
+|---|---|---|
+| [`zh-ai-tool-viral-post`](zh-ai-tool-viral-post/) | 写中文 AI 工具种草爆款短帖 | 可用 |
+| [`collage-sticker-doodle`](collage-sticker-doodle/) | 通用贴纸涂鸦拼贴定格视频生成器（含锁定的婚礼请柬包 `invite-classic`） | 可用，**推荐** |
+| [`collage-stopmotion-invite`](collage-stopmotion-invite/) | 拼贴手账定格风婚礼请柬视频（v8） | 已被 `collage-sticker-doodle` 的 `invite-classic` 取代，保留备查 |
+| [`video-style-distill`](video-style-distill/) | 把任意风格参考蒸馏成一个新的视频生成 skill | 可用 |
+
+视频类 skill 都用代码出片：HTML Canvas 逐帧绘制 + Playwright 截图 + FFmpeg 合成，Python 负责抠图、校验和 QA。
+
+---
+
+### zh-ai-tool-viral-post · 中文 AI 工具种草爆款推文
+
+- **做什么**：按"中文 AI 工具种草"类账号的写法写短帖：高情绪开头、短句分行、靠数字建立可信度、结尾引导收藏或评论。
+- **什么时候用**：在 X、小红书、即刻发提示词技巧、工具推荐、个人转型故事、AI 变现方法这类帖子。写严肃测评、新闻稿、正式文章时不要用。
+- **需要提供**：主题，加上手头的事实和数字，比如工具名、实测数据、链接、个人经历。
+- **输出**：一条约 150 字、5 到 7 行的成品帖，可附备选钩子。
+- **要点**：
+  - 4 套模板：A 提示词技巧、B 工具推荐、C 个人故事、D 变现方法，各有正文骨架。
+  - 5 类钩子：反常识、发现、惊叹、场景、号召。
+  - 风格基线来自同类账号约 320 条原创帖的统计：高频词、标点、数字占比、emoji 用法。
+  - `references/source-analysis.md` 是公开账号的风格分析。
+
+### collage-sticker-doodle · 贴纸涂鸦拼贴定格视频生成器（v4）
+
+- **做什么**：用真人照片做竖屏拼贴定格短视频。真人抠图后加厚白边做成贴纸，配上撕纸大色块、风景建筑照拼贴、手写深墨中文和程序化贴纸涂鸦，画面按 BGM 节拍定格抖动（boil），人物在 A、B 两个站位之间闪切。
+- **什么时候用**：生日、纪念日、旅行、毕业、聚会、婚礼等任何"把自己的照片做成手作拼贴感短片"的需求。要逐帧复刻原婚礼请柬片子时，选锁定包 `invite-classic`。
+- **两种模式**：
+  - **自由模式**：AI 读你的描述和素材，写故事板 `plan.json`，决定场景、顺序、文案、转场和闪法。可选 5 个风格包：scrapbook、magazine、retro-poster、graffiti、zine。seed 只负责故事板没写的细节，同一个 plan 加同一个 seed 能逐像素复现。
+  - **锁定模式 `invite-classic`**：完整搬入 `collage-stopmotion-invite` v8 的规则，包括 38.43 秒固定时间轴、S1–S10 十个场景、TV 开场、A/B 闪只在 S5–S7、全片唯一一次硬切、色卡结尾和马善政手写体。AI 只往固定槽位里填照片、人物和文字。成片与 v8 逐帧一致。
+- **需要提供**（详见 `references/asset_requirements.md`）：
+  - 自由模式（38 秒）：最少 2 张人物照、1 张风景照、一句话说明场合和情绪；推荐 6 张人物照（含 2 组 A/B 对）、3 张风景照，再给名字、日期、地点；最佳效果是 10 张人物照（含 3 组 A/B 对）、6 张风景照。BGM 一首，至少 30 秒。
+  - `invite-classic`：最少 8 张人物照（含 3 组 A/B 对）和 3 张风景照，推荐 11 张人物照和 5 张风景照。必须提供两人名字、日期、城市、厅名和流程时间。BGM 至少 38.5 秒。道具都已内置。
+  - A/B 对指同一地点、同一身衣服连拍的两张照片，人换了站位。
+- **输出**：竖屏 mp4，外加 10MB 以内的 720p 预览、QA 报告（JSON）和所用 seed。
+- **要点**：
+  - **第 0 步是素材预检和选片**（`scripts/precheck_assets.py`）。没给素材就列上传清单；不够或有不合格照片（分辨率低、糊、半身、人被裁）就说明缺什么、换哪张；够了就给出选片表，说明每张照片用在哪一场，等你确认后才开始渲染。
+  - 7 条 P0 硬规则，每一帧都审计，违反即判失败：不越界、恰好两个人物位置、固定层级、色块大而少、信息不被盖、人物完整、人物零遮挡。
+  - 抠图、人物完整性检查、素材和故事板校验、成片 QA 都有配套脚本。
+
+### collage-stopmotion-invite · 拼贴手账定格风请柬视频（v8，已被取代）
+
+> 它的全部规则已原样并入 `collage-sticker-doodle` 的 `invite-classic` 包，两者出片逐帧一致。新项目请用 `collage-sticker-doodle`，这里仅保留备查。
+
+- **做什么**：逐帧拆解一条 38.43 秒的婚礼请柬参考片，做成模板。节奏锁死，画面填空：整片挂在每格 0.408 秒的定格时钟上，你只换人物、风景建筑照和文案，seed 决定装饰细节。
+- **什么时候用**：要做和原片节奏、构图几乎一样的婚礼请柬视频时。
+- **需要提供**：按 `assets/manifest.example.json` 写的素材清单，包括人物照（含 S5–S7 三组 A/B 对）、5 张风景建筑照（标出建筑主体框和地面线）、两人名字、日期、地点、流程和 BGM。
+- **输出**：mp4 和 720p 预览、对比拼图、QA JSON、seed 和警告清单。
+- **要点**：S1–S10 固定事件表；近满版的不规则照片遮罩；马善政手写体；7 条 P0 硬规则逐帧逐像素审计。
+
+### video-style-distill · 风格蒸馏元 skill（v1）
+
+- **做什么**：把一个风格参考蒸馏成一个新的、能直接出片的视频生成 skill，并且让成片"像原作者做的"。`collage-sticker-doodle` 就是用这套方法做出来的。
+- **什么时候用**：你看到一种喜欢的视频、海报或设计风格，想以后用自己的素材反复出同款。
+- **需要提供**：任意组合的视频、图片或截图、设计稿或品牌手册 PDF、设计语言的文字描述。Figma、PSD、AI 原生文件需要先导出成 PNG 或 PDF。
+- **输出**：一个完整的新 skill 目录（SKILL.md、references、scripts、assets），带渲染器、故事板 `plan.json`、至少 3 个风格包、seed 随机、P0 硬规则和自动 QA，外加用新素材出的测试片。
+- **流程（10 步）**：测量 → 看帧写解析 → 提炼作者签名习惯 → 定素材约束 → 规则分层（节奏硬锁，版式给默认值加容差，用户反馈升级为 P0）→ 故事板、风格包和 seed → 渲染器 → 自动 QA → 出测试片自查 → 写成新 skill。
+- **要点**：
+  - 测量脚本：切点、定格网格、boil 态数、A/B 闪、转场、对拍、色板、拼图；静态图可推导动效默认值。
+  - 能力边界：拼贴、定格、动态排版、图形动画、扁平插画、卡点剪辑、MG 包装都能完整蒸馏。实拍运镜、复杂 3D 或特效、AI 生成画面只能蒸馏剪辑节奏和包装，动手前会先说明。
+
+---
 
 ## 注意
 
