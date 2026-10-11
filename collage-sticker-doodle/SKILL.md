@@ -87,3 +87,11 @@ invite-classic 用 v8 的槽位 manifest（`assets/invite-classic.manifest.examp
 - 测试素材里的 A/B 对不是同机位拍的，validator 会 REJECT A/B 同机位（渲染不受影响，但真实交付请用同组拍摄的对）。
 - 素材少于场景数时会复用（每个风景一场，人物轮换）；风景 <2 张时以 solo/note/list 场景为主。
 - tv 开场需要 `props.tv`（抠好的电视 PNG + `tv_screen.py` 输出的屏幕 json）。
+
+## 真实案例
+
+全部用网上示例素材（非真人用户照片）渲染，点封面看视频：
+
+| invite-classic | scrapbook | retro-poster | graffiti |
+|---|---|---|---|
+| <a href="examples/demo_invite_classic.mp4"><img src="examples/demo_invite_classic.jpg" width="180"></a> | <a href="examples/demo_scrapbook.mp4"><img src="examples/demo_scrapbook.jpg" width="180"></a> | <a href="examples/demo_retro_poster.mp4"><img src="examples/demo_retro_poster.jpg" width="180"></a> | <a href="examples/demo_graffiti.mp4"><img src="examples/demo_graffiti.jpg" width="180"></a> |

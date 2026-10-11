@@ -12,6 +12,17 @@
   assets/           # 模板、示例、图片
 ```
 
+## 效果预览
+
+所有案例都用网上示例素材渲染，点封面看视频。
+
+| collage-sticker-doodle · invite-classic | scrapbook | retro-poster | graffiti | collage-stopmotion-invite |
+|---|---|---|---|---|
+| <a href="collage-sticker-doodle/examples/demo_invite_classic.mp4"><img src="collage-sticker-doodle/examples/demo_invite_classic.jpg" width="160"></a> | <a href="collage-sticker-doodle/examples/demo_scrapbook.mp4"><img src="collage-sticker-doodle/examples/demo_scrapbook.jpg" width="160"></a> | <a href="collage-sticker-doodle/examples/demo_retro_poster.mp4"><img src="collage-sticker-doodle/examples/demo_retro_poster.jpg" width="160"></a> | <a href="collage-sticker-doodle/examples/demo_graffiti.mp4"><img src="collage-sticker-doodle/examples/demo_graffiti.jpg" width="160"></a> | <a href="collage-stopmotion-invite/examples/demo_invite.mp4"><img src="collage-stopmotion-invite/examples/demo_invite.jpg" width="160"></a> |
+
+- `video-style-distill`：[拆解报告](video-style-distill/examples/distill_analysis.md)、[色板](video-style-distill/examples/distill_palette.png)、[脚手架冒烟渲染](video-style-distill/examples/demo_scaffold.mp4)
+- `zh-ai-tool-viral-post`：[成品帖示例](zh-ai-tool-viral-post/examples/example_post_B.md)
+
 ## Skills 列表
 
 | slug | 一句话 | 状态 |
