@@ -42,6 +42,7 @@ curl -X PUT --data-binary @../<slug>.zip \
 | `zh-ai-tool-viral-post` | 中文 AI 工具种草爆款推文写作风格（X / 小红书 / 即刻短帖）；`references/source-analysis.md` 为公开 X 账号的风格分析 |
 | `collage-stopmotion-invite` | 拼贴风定格动画（婚礼请柬类）视频风格：素材约束 + 逐帧锁定的节奏与风格规范，供 Opus 5.5 写代码生成视频 |
 | `collage-sticker-doodle` | 通用贴纸涂鸦拼贴定格视频生成器（v3）：agent 读描述与素材写故事板 plan.json，5 个可变风格包；另含锁定包 invite-classic（逐帧复刻 collage-stopmotion-invite v8 婚礼请柬）；全部 P0 审计与 QA 共用 |
+| `video-style-distill` | 风格蒸馏元 skill：把视频 / 图片 / 设计稿 / 品牌手册 / 设计语言描述蒸馏成可复用的视频生成 skill（测量脚本：切点、视觉网格 T、boil、A/B、转场、对拍、色板、拼图、静态图动效推导；渲染器脚手架、plan 校验器、QA 骨架；产出模板） |
 
 ## 注意
 
