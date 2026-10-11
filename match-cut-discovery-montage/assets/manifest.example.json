@@ -1,0 +1,4 @@
+{"fps":25,"size":[1920,1080],"music":"bgm.wav","font":"fonts/SourceSerif4-Semibold.ttf",
+ "words":["There's","more to","discover"],"product_name":"Your Product 1.0","logo":"brand/logo_white.png",
+ "clips":[{"file":"clips/atmosphere.mp4","in":0.5,"category":"macro","license":"NASA public domain"},
+          {"file":"clips/bowl_rim.mov","in":1.2,"category":"craft","license":"own footage"}]}
