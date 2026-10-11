@@ -1,0 +1,61 @@
+{
+ "prompt": "我们的婚礼请柬，末路狂猫那种拼贴定格风",
+ "occasion": "wedding invitation",
+ "mood": "warm, romantic, playful",
+ "pack": "invite-classic",
+ "preset": "retro-warm",
+ "names": {
+  "groom": "林浩",
+  "bride": "周眠",
+  "groom_tag": "LIN HAO",
+  "bride_tag": "ZHOU MIAN"
+ },
+ "slots": {
+  "S1": {
+   "title_en": "WEDDING INVITATION",
+   "names_line": "Lin Hao & Zhou Mian"
+  },
+  "S2": {
+   "headline": "SAVE THE\nDATE"
+  },
+  "S3": {
+   "letter_zh": "亲爱的家人与挚友\n我们要结婚啦！\n从相识到相守的这些年\n谢谢你们一直在身边\n分享我们的笑和泪\n如今我们决定牵手余生\n想邀请最重要的你们\n来见证这个温柔的时刻\n带上好心情就足够\n我们备好了花和美酒\n纸短情长，静候佳期\n我们婚礼见！"
+  },
+  "S4": {
+   "quote_en": "Grow old along with me"
+  },
+  "S5": {
+   "quote_en": "I have loved the stars\ntoo fondly to fear night"
+  },
+  "S6": {
+   "quote_en": "His soul and mine\nare the same"
+  },
+  "S7": {
+   "quote_en": "My sun, my moon, my stars"
+  },
+  "S8": {
+   "quote_en": "Ever yours\nEver mine\nEver ours"
+  },
+  "S9": {
+   "schedule_title": "婚礼流程",
+   "schedule": [
+    "15:30 迎宾&签到",
+    "16:18 婚礼仪式",
+    "17:30 晚宴开始"
+   ]
+  },
+  "S10": {
+   "date": "婚礼日期：2027.05.20",
+   "venue": "婚礼地点：杭州栖湖酒店",
+   "hall": "云栖厅",
+   "closing_en": "See you at the wedding",
+   "swatches": [
+    "#F2AABD",
+    "#99B3D2",
+    "#ACA078",
+    "#A95842",
+    "#F0DCD2"
+   ]
+  }
+ }
+}

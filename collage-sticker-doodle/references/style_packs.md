@@ -1,5 +1,7 @@
 # 风格包（scripts/render_template/packs.js）
 
+> 另有锁定包 **invite-classic**（不在 packs.js 里，走 `render_template/invite/` 的 v8 渲染器）：结构和参数全部固定，见 references/invite-classic/README.md。
+
 每个包只改装饰：色板池、纹理、颗粒、英文/中文字体、剪字字体、贴纸集、涂鸦集、贴纸边、密度、允许的开场/结尾/转场/闪法/boil 步长、照片遮罩池、照片调色。P0 几何从不受影响。
 
 | 包 | 感觉 | 色板 | 纹理 | 中文 | 英文 | 贴纸 / 涂鸦 | 开场 / 结尾 | 转场 | 闪法 / boil |

@@ -23,6 +23,19 @@ def main():
     p = json.load(open(a.plan, encoding="utf-8")); m = json.load(open(a.manifest, encoding="utf-8")); root = a.root or os.path.dirname(os.path.abspath(a.manifest))
     out = []; R = lambda l, s: out.append((l, s)); texts = []
     pack = p.get("pack") or m.get("style", {}).get("pack")
+    if pack == "invite-classic":   # locked v8 structure: the plan may only fill slots of S1..S10 (manifest = v8 slot format)
+        ids = {x["id"] for x in m.get("scenes", [])}; allowed = {"title_en","names_line","headline","letter_zh","quote_en","schedule_title","schedule","date","venue","hall","closing_en","swatches"}
+        R("OK" if ids == {f"S{i}" for i in range(1, 11)} else "REJECT", "invite-classic manifest 必须是 S1..S10 槽位格式（assets/invite-classic.manifest.example.json）")
+        for k in ("scenes", "intro", "outro", "boil", "palette_bias"):
+            if k in p: R("REJECT", f"invite-classic 结构锁定：故事板不能写 {k}（只能写 slots / names / preset）")
+        for sid, sl in (p.get("slots") or {}).items():
+            if sid not in ids: R("REJECT", f"slots.{sid} 不存在")
+            for k in sl:
+                if k not in allowed: R("REJECT", f"slots.{sid}.{k} 不是可填槽位")
+        if p.get("preset") and p["preset"] not in ("retro-warm", "morandi", "summer-island", "film-night"): R("REJECT", f"preset {p['preset']}")
+        R("OK", "其余检查（字长、字形、素材、P0-6、A/B）用 scripts/invite_validate.py manifest.json（合并 slots 后）")
+        for l, s2 in out: print(f"[{l}] {s2}")
+        n = sum(l == "REJECT" for l, _ in out); print(f"\n{n} REJECT"); sys.exit(1 if n else 0)
     R("OK" if pack in PACKS else "REJECT", f"pack = {pack}")
     for k in ("occasion", "mood"): R("OK" if isinstance(p.get(k), str) and p[k].strip() else "WARN", f"{k}: {p.get(k)!r}（自由文本，写清场合与情绪）")
     if "palette_bias" in p and not all(re.match(r"^#[0-9A-Fa-f]{6}$", c) for c in p["palette_bias"]): R("REJECT", "palette_bias 必须是 #RRGGBB 列表")

@@ -10,6 +10,13 @@ def serve(port,root):
         def log_message(self,*a): pass
     h=functools.partial(Q,directory=root)
     s=http.server.ThreadingHTTPServer(("127.0.0.1",port),h); threading.Thread(target=s.serve_forever,daemon=True).start()
+def _invite(argv):
+    """pack invite-classic -> locked v8 code path (same QA)."""
+    for i,x in enumerate(argv):
+        if x=="--plan" and i+1<len(argv):
+            try: return json.load(open(argv[i+1],encoding="utf-8")).get("pack")=="invite-classic"
+            except Exception: return False
+    return False
 async def main(a):
     seed=a.seed if a.seed is not None else random.randint(1,2**31-1); print("SEED",seed)
     port=random.randint(20000,40000); serve(port,ROOT); os.makedirs(a.outdir,exist_ok=True)
@@ -62,5 +69,7 @@ async def main(a):
         if viol: sys.exit(3)
         if p6 and any(not x["ok"] for x in p6): print("P0-6 FAIL:",[(x["scene"],x["f"],x["errors"]) for x in p6 if not x["ok"]]); sys.exit(4)
 if __name__=="__main__":
+    if _invite(sys.argv):
+        import runpy; sys.argv[0]=os.path.join(os.path.dirname(os.path.abspath(__file__)),"run_invite.py"); runpy.run_path(sys.argv[0],run_name="__main__"); sys.exit(0)
     ap=argparse.ArgumentParser(); ap.add_argument("frames"); ap.add_argument("outdir"); ap.add_argument("--seed",type=int); ap.add_argument("--manifest",default=os.path.join(ROOT,"manifest.json")); ap.add_argument("--meta"); ap.add_argument("--plan",help="storyboard plan JSON (agent-written); overrides manifest.storyboard"); ap.add_argument("--person-check",action="store_true",help="P0-6：渲染后对每场景落位帧+每个 A/B/跳动帧做人物完整性检查（失败退出码 4）"); ap.add_argument("--person-sheet",help="P0-6 人物检查拼图输出路径")
     asyncio.run(main(ap.parse_args()))
