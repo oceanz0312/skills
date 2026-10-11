@@ -175,7 +175,7 @@ def main():
             if not isinstance(u,str) and not 0.15<=w<=0.3: R("WARN",f"{sid_}.prop_user width {w} 超出 0.15–0.30W")
     glyph_check(m,root,R)
     bgm=m.get("bgm",{}).get("file")
-    if not bgm or not os.path.exists(os.path.join(root,bgm)): R("WARN","BGM 缺失（需要询问用户）")
+    if not bgm or not os.path.exists(os.path.join(root,bgm)): R("REJECT","P0-11 BGM 缺失：manifest.bgm.file 必须指向存在的音频（成片必须有音轨）")
     else:
         try:
             import librosa; y,sr=librosa.load(os.path.join(root,bgm),sr=22050); d=len(y)/sr

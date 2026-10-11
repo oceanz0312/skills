@@ -78,6 +78,40 @@ def main():
     if pg!="film-warm":
         import color_check; cc=color_check.check(os.path.dirname(os.path.abspath(a.manifest)) if os.path.exists(a.manifest) else ".")
         rep["person_color"]=cc; checks.append(("P0-8_person_color", bool(cc) and all(v["pass"] for v in cc.values())))
+    # P0-11: final MP4 must have an audio stream (BGM required)
+    import subprocess as _sp
+    try:
+        _pr=_sp.run(["ffprobe","-v","error","-select_streams","a","-show_entries","stream=codec_type","-of","csv=p=0",a.out],capture_output=True,text=True,timeout=30)
+        _has_a=bool(_pr.stdout.strip())
+    except Exception as _e:
+        _has_a=False; rep["audio_error"]=str(_e)
+    rep["has_audio"]=_has_a; checks.append(("P0-11_audio", _has_a))
+    # P0-9 debris: scan cut/ stickers if present
+    import glob as _g, debris_check as _dc
+    _dres=[]
+    for _f in sorted(_g.glob("cut/*.png"))+sorted(_g.glob("tmp/cut/*.png")):
+        if _f.endswith(".mask.png"): continue
+        _r=_dc.check(_f); _dres.append(_r)
+        if not _r["pass"]: checks.append((f"P0-9_debris:{os.path.basename(_f)}", False))
+    if _dres and all(x["pass"] for x in _dres): checks.append(("P0-9_debris", True))
+    elif not _dres: pass  # no cutouts on disk; cutout.py already enforced at source
+    rep["debris"]=_dres
+    # P0-10 doodle vs text: any audit violation mentioning P0-10 fails
+    if a.meta:
+        _meta = meta if isinstance(meta, dict) else json.load(open(a.meta))
+        _viol = [str(x) for x in (_meta.get("p0_violations") or [])]
+        if not _viol and isinstance(_meta.get("audit"), list):
+            _viol = [v for x in _meta["audit"] for v in (x.get("violations") or x.get("v") or [])]
+        _p10 = [v for v in _viol if "P0-10" in str(v)]
+        _px = 0
+        if isinstance(_meta.get("audit"), list):
+            for x in _meta["audit"]:
+                st = x.get("st") or x.get("state") or {}
+                _px += int(st.get("doodleTextPx") or 0)
+        _ok = (len(_p10) == 0 and _px == 0)
+        checks.append(("P0-10_doodle_text", _ok))
+        rep["doodle_text"] = {"pass": _ok, "violations": _p10, "doodleTextPx": _px}
+
     rep["checks"]=[{"name":n,"pass":bool(p)} for n,p in checks]
     if a.ref:
         rows=[(a.out,v)]+[(x,frames(x)) for x in a.extra]+[(a.ref,frames(a.ref))]; W,H=180,320
@@ -91,5 +125,5 @@ def main():
     s=json.dumps(rep,ensure_ascii=False,indent=1); print(s)
     if a.json: open(a.json,"w").write(s)
     fail=[c["name"] for c in rep["checks"] if not c["pass"]]
-    if any(n.startswith(("P0","V6","字形")) for n in fail): print("RENDER FAIL:",fail); raise SystemExit(1)
+    if any(n.startswith(("P0","V6","字形")) or "P0-9" in n or "P0-10" in n or "P0-11" in n for n in fail): print("RENDER FAIL:",fail); raise SystemExit(1)
 if __name__=="__main__": main()

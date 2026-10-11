@@ -243,7 +243,11 @@ function aabb(p){const xs=p.map(q=>q[0]),ys=p.map(q=>q[1]);return {x0:Math.min(.
 function inter(a,b){return Math.max(0,Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0))*Math.max(0,Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0))}
 function auditList(A,settled){const v=[];const st={blocks:0,minBlockArea:1,overflow:0,buildingOcc:0,infoOcc:0,peopleOcc:0,positions:[]};A.forEach((e,i)=>{e.i=i;e.bb=aabb(e.poly)});
   const blocks=A.filter(e=>e.cat=="block");st.blocks=blocks.length;
-  if(!settled)return {v,st};
+  if(!settled)  // P0-10: doodles must not cross/cover readable text
+  let doodleTextPx=0; const dls=A.filter(e=>e.cat=="doodle"); const txs=A.filter(e=>e.cat=="text"||e.cat=="tag");
+  for(const d of dls) for(const t of txs){ const o=inter(d.bb,t.bb); if(o>0){ doodleTextPx+=o; v.push(`P0-10 doodle ${d.id} overlaps text ${t.id} (${Math.round(o)}px)`);} }
+  st.doodleTextPx=doodleTextPx;
+return {v,st};
   for(const b of blocks){const a=polyArea(clipFrame(b.poly))/(W*H);st.minBlockArea=Math.min(st.minBlockArea,a);if(a<0.18)v.push(`P0-4 small block ${b.id} ${(a*100).toFixed(1)}%`)}
   if(blocks.length>3)v.push(`P0-4 ${blocks.length} block layers`);
   const firstContent=A.findIndex(e=>e.cat!="block");for(const b of blocks)if(firstContent>=0&&b.i>firstContent)v.push(`P0-4 block ${b.id} drawn above content`);

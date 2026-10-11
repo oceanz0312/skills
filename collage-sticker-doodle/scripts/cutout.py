@@ -92,6 +92,16 @@ def main():
     mm=np.zeros((H,W),bool); mm[pad:pad+m.shape[0],pad:pad+m.shape[1]]=m
     out[mm,:3]=body[mm]; out[mm,3]=255
     o=Image.fromarray(out); o=o.crop(o.getbbox()); o.save(a.out)
-    print(f"saved {a.out} size={o.size} model={model} border={b}px pieces={ndimage.label(white)[1]} person_check={'PASS' if best[0][0] else 'REJECT'} {rep.get('errors')} warn={rep.get('warnings')}")
+    # P0-9: debris on body mask BEFORE white border (border can bridge small blobs)
+    import debris_check as _dc, tempfile
+    _tmp=stem+".debris_probe.png"
+    Image.fromarray(np.dstack([rgb,(m.astype(np.uint8)*255)])).save(_tmp)
+    _d=_dc.check(_tmp); 
+    try: os.remove(_tmp)
+    except Exception: pass
+    rep["debris"]=_d
+    json.dump({"input":a.inp,"pass":bool(best[0][0] and _d["pass"]),"chosen_model":model,"tries":tries,"report":rep,"debris":_d},open(stem+".check.json","w"),ensure_ascii=False,indent=1)
+    print(f"saved {a.out} size={o.size} model={model} border={b}px pieces={ndimage.label(white)[1]} person_check={'PASS' if best[0][0] else 'REJECT'} debris={'PASS' if _d['pass'] else 'FAIL:'+_d['errors']} {rep.get('errors')} warn={rep.get('warnings')}")
     if not best[0][0]: print("REJECT: 所有模型/参数都不完整——换一张素材（见 .check.json）"); raise SystemExit(3)
+    if not _d["pass"]: print("REJECT: P0-9 漂浮碎片超标——清干净支架/三脚架残段或换素材（见 .check.json debris）"); raise SystemExit(3)
 if __name__=="__main__": main()
