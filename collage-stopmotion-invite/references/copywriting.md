@@ -8,3 +8,10 @@
 - **标题 S2**：≤3 个英文词、≤16 字母，全大写（WE GOT MARRIED / SAVE THE DATE / WE SAID YES）。
 - 片头：`WEDDING INVITATION` + `{新郎名拼音} & {新娘名拼音}`。
 
+
+## v5 字体（只用手写体）
+- 英文情话 / 标题 / 名字：Reenie Beanie、Nothing You Could Do、Homemade Apple、Caveat、Dancing Script（OFL/Apache，Google Fonts）。大字号、细笔画。
+- 勒索信标题：剪纸底块 + 手写字形（Caveat 500 / Dancing Script 500 / Kalam）。
+- 中文：全部用马善政 Ma Shan Zheng（正文、流程、日期地点、流程标题、厅名），配 v8 钢笔墨迹渲染（近黑、加粗、轻压感、逐字抖动）。站酷快乐体不再使用（偏卡通展示体）。
+- 文案每场景 1 句话（可以换行成 2–3 行）；写太长会被缩到最小字号 118×系数，仍放不下就重掷/失败。
+- 校验：validate 用 fontTools 查 cmap；渲染后 `assertGlyphs()` 再按实际绘制过的字符查一遍。
