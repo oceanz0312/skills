@@ -156,6 +156,23 @@ def main():
         props=[k for k in slots if k.startswith("prop_") and not k.endswith("_screen")]
         if len(props)>1: R("WARN",f"{sid} 有 {len(props)} 个道具，v5 每场最多 1 个（留白规则），只用第一个: {props[0]}")
         if "prop_tv" in slots and not slots.get("prop_tv_screen"): R("WARN","S1 未给 prop_tv_screen：先跑 scripts/tv_screen.py 检测玻璃屏四边形")
+    # v9 defaults (each overridable in style; overrides must be listed as deviations in the delivery report)
+    st=m.get("style",{})
+    if not st.get("dropTV") and "prop_tv" not in sc.get("S1",{}): R("WARN","v9 默认 S1 电视开场：S1 缺 prop_tv（只有 style.dropTV=true 且用户明确要求才可去掉）")
+    nl=sum(1 for s_ in sc.values() if s_.get("landscape"))
+    if nl!=5 and not st.get("landscapeCount"): R("WARN",f"v9 默认恰好 5 个风景场景（S4–S8），当前 {nl}；多于 5 个地点按时间顺序选 5 个并在交付报告列出舍弃项；改数量需用户明确要求 style.landscapeCount")
+    for sid_ in ("S2","S3","S9","S10"):
+        if sc.get(sid_,{}).get("landscape"): R("WARN",f"v9 {sid_} 是非风景场景，应使用纯色撕纸底，不放风景照（style.nonLandscapeBg 可覆盖）")
+    if st.get("personGrade","none")!="none": R("WARN",f"style.personGrade={st['personGrade']}：人物会被调色，P0-8 原色检查将跳过（需用户明确要求）")
+    if st.get("personLock") and not os.path.exists(os.path.join(root,st["personLock"])): R("REJECT",f"style.personLock 文件不存在: {st['personLock']}")
+    for sid_,slots in sc.items():
+        u=slots.get("prop_user")
+        if u:
+            f=u if isinstance(u,str) else u.get("file","")
+            if not os.path.exists(os.path.join(root,f)): R("REJECT",f"{sid_}.prop_user 文件不存在: {f}")
+            elif Image.open(os.path.join(root,f)).mode!="RGBA": R("REJECT",f"{sid_}.prop_user 必须是透明 PNG（先跑 scripts/extract_sticker.py）")
+            w=1 if isinstance(u,str) else u.get("width",0.24)
+            if not isinstance(u,str) and not 0.15<=w<=0.3: R("WARN",f"{sid_}.prop_user width {w} 超出 0.15–0.30W")
     glyph_check(m,root,R)
     bgm=m.get("bgm",{}).get("file")
     if not bgm or not os.path.exists(os.path.join(root,bgm)): R("WARN","BGM 缺失（需要询问用户）")

@@ -8,7 +8,7 @@
 V6：风景照近满版（每场景照片画内面积 ≥70%，skyline 剪影 ≥62%）、遮罩不规则（skyline/torn/arch/circle/heart/blob），建筑主体完整落在遮罩内。
 任何 P0 / V6 失败 → 退出码 1（成片判定 FAIL）。
 依赖: ffmpeg, numpy, pillow。"""
-import argparse, subprocess, numpy as np, json, math
+import argparse, subprocess, os, numpy as np, json, math
 from PIL import Image, ImageDraw
 LAND={'S1':0,'S2':65,'S3':126,'S4':272,'S5':382,'S6':492,'S7':602,'S8':712,'S9':822,'S10':1006}
 def frames(p,W=180,H=320):
@@ -54,7 +54,7 @@ def p0(meta):
     return r
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument("out"); ap.add_argument("--ref"); ap.add_argument("--T",type=float,default=12.25)
-    ap.add_argument("--sheet",default="qa_sheet.jpg"); ap.add_argument("--meta"); ap.add_argument("--extra",nargs="*",default=[]); ap.add_argument("--json"); a=ap.parse_args()
+    ap.add_argument("--sheet",default="qa_sheet.jpg"); ap.add_argument("--meta"); ap.add_argument("--extra",nargs="*",default=[]); ap.add_argument("--json"); ap.add_argument("--manifest",default="manifest.json",help="v9: 读 style.personGrade；P0-8 人物原色检查"); a=ap.parse_args()
     v=frames(a.out); d=np.array([np.abs(v[i]-v[i-1]).mean() for i in range(1,len(v))])
     ev=np.where(d>1.0)[0]+1; still=d[d<=1.0]
     rep={"file":a.out,"frames":int(len(v)),"events":int(len(ev)),"still_mean_diff":round(float(still.mean()) if len(still) else 0,3)}
@@ -73,6 +73,11 @@ def main():
             P=p0(meta); rep["p0"]=P; rep["rerolls"]={k:v["attempts"] for k,v in meta.get("rerolls",{}).items()}; rep["glyph_missing"]=meta.get("glyph_missing"); rep["fonts_used"]=meta.get("fonts_used")
             checks+=[(k,P[k]["pass"]) for k in P if k.startswith("P0") or k.startswith("V6")]+[("字形全覆盖",not meta.get("glyph_missing"))]
         else: checks.append(("P0 审计数据存在（需 v5 run.py）",False))
+    # v9 P0-8: person stickers keep original colours (skipped when style.personGrade == "film-warm")
+    pg=(json.load(open(a.manifest)).get("style",{}).get("personGrade","none")) if os.path.exists(a.manifest) else "none"
+    if pg!="film-warm":
+        import color_check; cc=color_check.check(os.path.dirname(os.path.abspath(a.manifest)) if os.path.exists(a.manifest) else ".")
+        rep["person_color"]=cc; checks.append(("P0-8_person_color", bool(cc) and all(v["pass"] for v in cc.values())))
     rep["checks"]=[{"name":n,"pass":bool(p)} for n,p in checks]
     if a.ref:
         rows=[(a.out,v)]+[(x,frames(x)) for x in a.extra]+[(a.ref,frames(a.ref))]; W,H=180,320

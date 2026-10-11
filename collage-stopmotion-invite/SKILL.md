@@ -3,8 +3,9 @@ name: collage-stopmotion-invite
 description: 用代码（HTML Canvas + Playwright + FFmpeg）做"拼贴手账定格风"竖屏视频：真人抠图贴纸加厚白边、复古纸纹、大撕纸色块、真实建筑风景拼贴、手写字，整片按 0.408s 一格定格抖动（boil），高潮段两个站位 A/B 姿势硬切闪，转场用步进摇镜。节奏、时间轴已从一条 38 秒婚礼请柬参考片逐帧量好并锁定，用户只换人物、背景照片和文案。只要用户提到婚礼请柬视频、婚礼预告、save the date、结婚邀请函动画、拼贴风、手账风、scrapbook、collage、剪贴簿、贴纸风、定格动画、stop motion、boil、末路狂猫那种风格、用照片做卡点拼贴视频、情侣纪念日或旅行邀请短片，即使没说"skill"或"模板"，也要用这个 skill。不要用于：连续运镜或实拍剪辑、口播讲解、知识科普，或用户明确要自由改节奏的情况。
 ---
 
-# 拼贴手账定格风 · 请柬视频模板（v8）
+# 拼贴手账定格风 · 请柬视频模板（v9）
 
+> **v9**：人物默认保留原片颜色（新增 P0-8 原色检查）；S1 电视开场、恰好 5 个风景、非风景场景纯色撕纸底写成默认规则；新增用户道具贴纸（宠物等）`prop_user`、人物锁定 `--lock-from`、贴纸抽取 `extract_sticker.py`。每条默认都有覆盖开关，见下方「v9 默认规则与覆盖开关」。
 > **v8**：中文全部用马善政手写体（深黑加粗墨色）；人物不可被任何元素遮挡（逐帧逐像素审计，被盖 >0 像素即 FAIL）；含 v6 近满版不规则遮罩背景与 v7 人物完整性检查。
 
 ## ⛔ P0 硬规则（任何随机参数都不许破坏；渲染器逐帧审计，违反即判定 FAIL）
@@ -17,8 +18,23 @@ description: 用代码（HTML Canvas + Playwright + FFmpeg）做"拼贴手账定
 | **P0-5 信息不被盖** | 信息内容（流程、信笺、所有文字、名牌、实物道具、请柬卡）绝不被色块盖住，信息之间也不互相压。 | 结构上色块先画；QA 检查色块压信息、文字/名牌两两重叠 |
 | **P0-6 人物完整（v7）** | 每个人物贴纸里的人必须是完整的：不许只剩头+手臂、缺躯干/肢体、有漂浮碎片，也不许在左/右/上边被裁（只允许脚/腿被画面底边裁）。抠图阶段和成片阶段各查一次。 | cutout.py 抠完即跑 `person_check`（MediaPipe 多人姿态 + mask 连通性 + 边缘裁切），失败自动换 rembg 模型/合并参数，全失败退出码 3 → 换素材；run.py `--person-check` 在每场景落位帧 + 每个 A/B / 跳动帧把源图关键点按该帧真实贴纸变换映射到成片上，必须落在画出的贴纸像素里，违规退出码 4；qa_compare 的 `P0-6_person_complete` 失败 → 不能交付 |
 | **P0-7 人物永不被遮挡（v8）** | 任何一帧里，人物贴纸的任何像素都不许被任何东西盖住：道具、文字、涂鸦、照片、色块、胶带、花、电视机框/玻璃反光、转场都不行。人物永远最后画（只有全片 4% 颗粒在最上层）。S1 电视屏里的 S2 情侣也是在电视框、反光、标题、名字之后单独再画，可以"探出"屏幕，但不被裁也不被盖。 | 像素级：run.py 对每个唯一帧关掉颗粒重画一次并记录每次人物 drawImage 的完整变换，再把贴纸单独画出来；贴纸不透明像素与成片像素差 >3 的个数必须 = 0，否则 `P0-7 person occluded Npx` → 退出码 3；qa_compare `P0-7_no_occlusion` |
+| **P0-8 人物保留原色（v9）** | 人物贴纸的平均饱和度 ÷ 源照片同一 mask 区域的平均饱和度 ≥ 0.9；只有风景照可以加胶片暖调，渲染器从不给人物加滤镜。 | `cutout.py` 默认 `--grade none`；`qa_compare.py` 自动调 `scripts/color_check.py`，<0.9 → FAIL。`style.personGrade="film-warm"` 时跳过（需用户明确要求） |
 
 **randomness 只在 P0 之内变化**：seed 可以改形状、角度、字体、颜色、道具位置，但每次随机后都要过 P0 审计，不过就重掷（每场景最多 40 次）；40 次都不过 → 渲染退出码 3。
+
+## v9 默认规则与覆盖开关
+默认值每个项目都生效；覆盖必须是用户明确要求，并在交付报告的「偏离」里写明。
+
+| # | 默认 | 覆盖开关（manifest） |
+|---|---|---|
+| 1 | 人物贴纸保留原片颜色：`cutout.py --grade none`（默认），胶片暖调只给风景；P0-8 检查饱和度比 ≥0.9 | `style.personGrade: "film-warm"`（同时抠图传 `--grade film-warm`） |
+| 2 | S1 一律用复古电视开场（开机→换台闪→推进屏幕进 S2），不许省掉 | `style.dropTV: true` |
+| 3 | 恰好 5 个风景场景（S4–S8），总长跟原曲走（不循环、不拉长）。用户给 >5 个地点：按时间顺序挑 5 个，交付报告列出舍弃的地点；**绝不压缩场景时长去塞更多地点** | `style.landscapeCount: N`（需用户明确要求，按偏离记录；按 timeline.md 伸缩/加场景，不压缩单场景） |
+| 4 | 非风景场景 S2/S3/S9/S10 用纯色撕纸底，不放风景照；这些场景优先用用户写真里**风格最统一的一组**（同一场景/服装/光线），在两位置规则内多用 | `style.nonLandscapeBg: "photo"` |
+| 5 | （可选）用户道具贴纸（宠物、玩偶等）：`extract_sticker.py` 抽成透明 PNG（保留白边、原色），每场最多 1 个（替换该场原道具），默认锚点画面右上、贴近人物头部；安全区按所有 A/B 位置 × 3 个 boil 状态计算；被迫偏移时报告 | `Sx.slots.prop_user: {file, width(0.15–0.30, 默认 0.24), anchor: upper-right/upper-left/bottom-right/bottom-left, rot}` |
+| 6 | （可选）人物锁定：用户认可人物站位后，只改风景/道具的重渲染保持人物位置、缩放、脚线完全不变 | `run.py --lock-from 上次/render_meta.json` 或 `style.personLock: "路径"` |
+| 7 | 用户自己拍的风景（含路人/动物）：调裁切 / 缩放 / `landscape_subject` 框，不挪人物；被人物挡住的主体在报告里列出 | —（遵守 P0-3；有人物锁定时只能改风景参数） |
+| 8 | BGM 可以从用户给的视频里抽：`ffmpeg -i in.mp4 -vn -c:a libmp3lame -q:a 2 bgm.mp3`，网格从第 0 帧对齐 | `bgm.offset_frames` |
 
 ## 这是什么
 对一条 38.43 秒婚礼请柬参考片（30fps）的逐帧拆解。**节奏是模板，画面是填空**：整片挂在 T = 12.25 帧（0.408s）的定格时钟上，事件帧 `round(3.4 + 12.22k)`。用户换人物、风景/建筑照片和文案；`seed` 决定装饰细节。
@@ -35,19 +51,20 @@ description: 用代码（HTML Canvas + Playwright + FFmpeg）做"拼贴手账定
 | 写文案、选字体时 | `references/copywriting.md` |
 | 自检"像不像原作"时 | `references/signature.md`（含 v4/v5 偏离和反模式） |
 | 渲染 | `scripts/render_template/`：render.js（纯函数渲染 + 审计）、presets.js、index.html、run.py |
-| 工具 | `scripts/cutout.py` 抠图、`scripts/tv_screen.py` 检测电视玻璃屏、`scripts/validate_manifest.py` 素材校验、`scripts/qa_compare.py` 成片 QA |
+| 工具 | `scripts/extract_sticker.py` 用户道具贴纸抽取（v9）、`scripts/color_check.py` P0-8 原色检查（v9，qa_compare 自动调用）、`scripts/cutout.py` 抠图、`scripts/tv_screen.py` 检测电视玻璃屏、`scripts/validate_manifest.py` 素材校验、`scripts/qa_compare.py` 成片 QA |
 
 ## 工作流程
 1. **素材清单**：照 `assets/manifest.example.json` 写 `manifest.json`。每个风景场景给 `landscape_subject`（建筑主体框，源图归一化 `{u,v,w,h}`）和 `landscape_ground`（照片片里地面线的高度比例，人物脚落在这里）。`style` 写 `preset` / `randomness` / `seed`。
-2. **抠图 + 人物完整性（P0-6 源图侧，必做）**：`python scripts/cutout.py in.jpg cut/S5_A.png [--expect 2]`（自动选模型、两人合成一张贴纸、统一胶片暖调，同时输出 mask 和 `.check.json`）。抠完立即跑 `scripts/person_check.py`：照片里每个被收进贴纸的人，可见的肩/髋/肘/膝/踝都必须在 mask 里；缺躯干或 ≥2 个肢体关节、漂浮碎片、在原图上/左/右边被裁 → 依次换 u2net_human_seg / isnet-general-use / birefnet-portrait / u2net 和合并距离重抠；全部失败退出码 3 → **换一张素材**，再不行就告诉用户。"完整人数 < expect" 只是 WARN（姿态模型对深色西装/老照片会漏检），必须在拼图里人工确认。
+2. **抠图 + 人物完整性（P0-6 源图侧，必做）**：`python scripts/cutout.py in.jpg cut/S5_A.png [--expect 2]`（自动选模型、两人合成一张贴纸、v9 默认保留原色（`--grade none`；只有 `style.personGrade="film-warm"` 才传 `--grade film-warm`），同时输出 mask 和 `.check.json`）。抠完立即跑 `scripts/person_check.py`：照片里每个被收进贴纸的人，可见的肩/髋/肘/膝/踝都必须在 mask 里；缺躯干或 ≥2 个肢体关节、漂浮碎片、在原图上/左/右边被裁 → 依次换 u2net_human_seg / isnet-general-use / birefnet-portrait / u2net 和合并距离重抠；全部失败退出码 3 → **换一张素材**，再不行就告诉用户。"完整人数 < expect" 只是 WARN（姿态模型对深色西装/老照片会漏检），必须在拼图里人工确认。
 3. **电视屏**：`python scripts/tv_screen.py cut/props/tv.png --json cut/props/tv.screen.json --preview tv_check.jpg`，看一眼预览（青色圆角框应该正好贴住玻璃）；manifest 里 `S1.slots.prop_tv_screen` 指向这个 json。
 4. **校验**（v6 另查：主体框宽度能否放进竖版满版裁切、主体是否贴原图顶边、照片高度是否够满版）：`python scripts/validate_manifest.py manifest.json`。检查分辨率、文字长度、姿势舒展度、A/B 同机位、**风景是否远景/有纵深**（画幅、地平线、细节密度，近景局部会 WARN）、**每场景 ≤1 个道具**、**所有字符在手写字体里都有字形**（fontTools）、BGM。有 REJECT 先解决。
 5. **定时钟**：T 与 12.25 差 ≤0.4 帧用原网格，否则按 timeline.md 伸缩；用原片音轨就从第 0 帧对齐。
 6. **渲染**：把 render_template 放到项目根目录 `render/`（含 person_check.py），字体放 `fonts/`，然后 `python render/run.py all frames --seed N --person-check --person-sheet person_check_sheet.jpg`。run.py 在每个唯一帧的真实绘制调用上做 P0 审计，写进 `render_meta`；有 P0 违规退出码 3，字形缺失退出码 2。同 seed 逐像素复现。
    `ffmpeg -framerate 30 -i frames/%05d.png -i bgm.mp3 -c:v libx264 -pix_fmt yuv420p -crf 18 -shortest out.mp4`
 7. **成片人物检查（P0-6 成片侧，交付前必做，不能跳过）**：`--person-check` 对每场景落位帧 + 每个 A/B / 跳动帧导出"只画人物"的图层，把源图姿态关键点按该帧真实的贴纸位置/缩放/旋转/抖动映射到成片上：落在画外下方 = 允许；落在左/右/上边外 = FAIL；落在画面内却不在贴纸像素上 = 缺身体 FAIL。同时查贴纸碰左/右/上边、碎块。在贴纸单独图层上重跑姿态只作 WARN。违规 → 退出码 4。`person_check_sheet.jpg` 是逐场景拼图（绿=通过，黄=有警告，红=失败，蓝点=映射关键点，红点=缺失关键点）：**交付前必须由人或 agent 逐行看一遍**，黄框（漏检警告）尤其要确认两个人都是完整的。
-8. **QA**（v6 多一项 `V6_photo`：每场景遮罩类型、最小画内覆盖率、全片不同遮罩数）：`python scripts/qa_compare.py out.mp4 --ref ref.mp4 --meta render_meta.json --json qa.json`。P0-1…P0-7、字形全覆盖任何一项失败（没带 --person-check 跑出的 meta 会让 P0-6 直接失败） → 退出码 1，这片不能交付。另外看：静止帧差 <0.2、网格步长 12.25±0.1、最大残差 ≤1.5 帧、A/B / 跳动位移 ≥ 头高。最后自己逐场景看帧，对着 P0 表核一遍。
-8. **交付**：mp4（+720p <10MB）+ 对比拼图 + QA JSON + seed + WARN 清单。
+8. **QA**（v6 多一项 `V6_photo`：每场景遮罩类型、最小画内覆盖率、全片不同遮罩数）：`python scripts/qa_compare.py out.mp4 --ref ref.mp4 --meta render_meta.json --json qa.json`。P0-1…P0-8、字形全覆盖任何一项失败（没带 --person-check 跑出的 meta 会让 P0-6 直接失败） → 退出码 1，这片不能交付。另外看：静止帧差 <0.2、网格步长 12.25±0.1、最大残差 ≤1.5 帧、A/B / 跳动位移 ≥ 头高。最后自己逐场景看帧，对着 P0 表核一遍。
+   v9：qa_compare 读 `--manifest manifest.json`（默认当前目录）做 P0-8；重渲染只换风景/道具时加 `--lock-from` 锁人物。
+8. **交付**：v9 报告必须含：舍弃的地点（默认 3）、道具贴纸坐标与是否被迫偏移（默认 5）、被挡住的风景主体（默认 7）、所有覆盖开关（偏离）。mp4（+720p <10MB）+ 对比拼图 + QA JSON + seed + WARN 清单。
 
 ## 锁定的节奏【硬锁定】【实测】
 | 场景 | 帧 | 内容 | 人物动作 | 进入方式（帧） |

@@ -1,4 +1,4 @@
-// collage-stopmotion-invite v5 renderer. render(ctx,f) is a pure function of f; all randomness fixed in init(seed).
+// collage-stopmotion-invite v9 renderer (v9: user prop stickers, person lock; people are never colour-filtered). render(ctx,f) is a pure function of f; all randomness fixed in init(seed).
 // P0 rules are enforced twice: (1) every seeded layout is AUDITED over all its boil/position states and re-rolled on any
 // violation; (2) every rendered frame is audited again (frameAudit) and run.py exits non-zero if any P0 check fails.
 const W=1080,H=1920,MARGIN=12;
@@ -233,7 +233,9 @@ function makeLayout(sid,attempt){const r=seeded(sid+"|layout|"+attempt);const L=
   // ≤1 real-object prop + ≤1 doodle, placed by rejection sampling; final legality is decided by the audit
   const fixedProp={S2:"polaroid",S3:"flowers",S9:"car"}[sid];const optional=!fixedProp&&sid!="S1"&&sid!="S10"&&r()<0.5;
   if(fixedProp||optional){const key=fixedProp||pick(r,P.props.filter(k=>IMG[k]));const pw=(key=="car"?rr(r,230,290):rr(r,190,260))*Math.max(0.62,1-0.012*attempt);/* fixed props shrink on re-roll until they fit */L.props.push({id:sid+"p0",key,x:0,y:0,w:pw,rot:(r()<0.5?-1:1)*rr(r,5,14)*LV.tilt,optional});}
+  {const u=slot(sid,"prop_user");if(u&&IMG["U_"+sid]){const o=typeof u=="string"?{}:u;const wf=o.width??0.24;L.props=[{id:sid+"p0",key:"U_"+sid,x:0,y:0,w:wf*W*Math.max(0.88,1-0.004*attempt),rot:o.rot??(sid.charCodeAt(1)%2?3:-3),user:true,anchor:o.anchor||"upper-right"}]}}   // v9: user sticker = this scene's single prop (≤1 prop rule)
   if(["S2","S4","S6","S8","S9"].includes(sid)&&r()<0.5+0.25*LV.extra)L.doodles.push({id:sid+"d",kind:sid=="S2"?"hearts":pick(r,P.doodles),x:0,y:0,s:rr(r,60,90),rot:rr(r,-0.4,0.4),color:pick(r,[P.scenes[sid][1],P.ink,mix(P.scenes[sid][1],P.ink,0.3)])});
+  if(M.lock&&M.lock[sid]&&M.lock[sid].pos){const k=M.lock[sid];L.feet=k.feet;L.pscale=k.pscale;L.pos=k.pos;L.peopleFail=false}   // v9 person lock: keep approved A/B positions, scale, foot line
   L.rand=r;return L}
 // ---------- the audit: evaluated on real draw calls ----------
 const INFO=["text","prop","info","tag","doodle"];
@@ -276,6 +278,21 @@ function placeFree(sid,L,obj,box){const r=L.rand;const sc=SCENES.find(x=>x.id==s
     // props may tuck partly behind a person (people are on top, so nothing covers people) but stay ≥70% visible; nothing may touch text/info
     if(occ.some(o=>o.person?inter(o,bb)>(obj.key?0.4:0)*ar:inter(o,{x0:bb.x0-pad,y0:bb.y0-pad,x1:bb.x1+pad,y1:bb.y1+pad})>0))continue;return true}
   return false}
+// v9: user prop placement. Safe zone is computed over every A/B position x every boil state (occ = all audited boxes).
+// anchor upper-right/upper-left: just above/beside the couple's heads on that side; bottom-right/bottom-left: on the foot line in the corner.
+// Never touches text/info/props (14px), subject overlap ≤2%, person bbox overlap ≤15% (people are drawn on top, so they are never covered).
+function placeUser(sid,L,p){const sc=SCENES.find(x=>x.id==sid);const occ=[];
+  for(const f of sceneStates(sc))for(let b=0;b<3;b++){const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");AUD=[];drawFor(x,sid,f,b);for(const e of AUD)if(e.cat!="block"&&e.cat!="photo"&&!(e.cat=="info"&&/card|letter/.test(e.id))&&e.id!=p.id){const bb=aabb(e.poly);bb.person=e.cat=="person";bb.subj=e.cat=="subject";occ.push(bb)}AUD=null}
+  const bbw=propBox({...p,x:0,y:0});const hw=(bbw.x1-bbw.x0)/2,hh=(bbw.y1-bbw.y0)/2;const pad=24;const ppl=occ.filter(o=>o.person);
+  const right=!/left/.test(p.anchor),upper=!/bottom/.test(p.anchor);const top=ppl.length?Math.min(...ppl.map(o=>o.y0)):H*0.5;
+  const tx=right?W-MARGIN-pad-hw-30:MARGIN+pad+hw+30,ty=upper?top-hh-20:Math.min(L.feet-propH(p)/2+10,H-MARGIN-pad-hh);let best=null;
+  for(let dx=0;dx<=360;dx+=20)for(let dy=-240;dy<=240;dy+=20){p.x=tx+(right?-dx:dx);p.y=ty+dy;const bb=propBox(p);const ar=(bb.x1-bb.x0)*(bb.y1-bb.y0);
+    if(bb.x0<MARGIN+pad||bb.y0<MARGIN+pad||bb.x1>W-MARGIN-pad||bb.y1>H-MARGIN-pad)continue;
+    if(occ.some(o=>!o.person&&!o.subj&&inter(o,{x0:bb.x0-14,y0:bb.y0-14,x1:bb.x1+14,y1:bb.y1+14})>0))continue;
+    if(occ.filter(o=>o.subj).reduce((a,o)=>a+inter(o,bb)/Math.max(1,(o.x1-o.x0)*(o.y1-o.y0)),0)>0.02)continue;
+    const po=ppl.reduce((a,o)=>Math.max(a,inter(o,bb)),0)/ar;if(po>0.15)continue;
+    const sc2=Math.hypot(dx,dy)+300*po;if(!best||sc2<best.score)best={score:sc2,x:p.x,y:p.y,dx,dy,gap:upper?Math.round(top-bb.y1):null}}
+  if(!best)return false;p.x=best.x;p.y=best.y;p.nudge={dx:best.dx,dy:best.dy,gapToHeads:best.gap};return true}
 function propBox(p){const h=propH(p),t=Math.abs(p.rot)*Math.PI/180;const hw=(p.w*Math.cos(t)+h*Math.sin(t))/2+10,hh=(p.w*Math.sin(t)+h*Math.cos(t))/2+10;return {x0:p.x-hw,y0:p.y-hh,x1:p.x+hw,y1:p.y+hh}}
 function dBox(d){const b=doodleBox(d);return {x0:d.x+b[0]-30,y0:d.y+b[1]-30,x1:d.x+b[0]+b[2]+30,y1:d.y+b[1]+b[3]+30}}
 function chooseScriptColor(sid,L){const c=document.createElement("canvas");c.width=W/4;c.height=H/4;const x=c.getContext("2d");x.scale(0.25,0.25);
@@ -287,7 +304,7 @@ function chooseScriptColor(sid,L){const c=document.createElement("canvas");c.wid
 function buildLayouts(){for(const s of [...SCENES.slice(1),SCENES[0]]){let L,errs,att;
   for(att=0;att<40;att++){L=makeLayout(s.id,att);LAYOUT[s.id]=L;errs=softChecks(s.id,L);
     if(!errs.length&&L.script){const cc=chooseScriptColor(s.id,L);L.script.color=cc.color;L.script.contrast=+cc.ratio.toFixed(2);if(cc.ratio<3.0)errs.push("contrast "+cc.ratio.toFixed(2))}
-    if(!errs.length)for(const p of [...L.props])if(!placeFree(s.id,L,p,propBox)){if(p.optional)L.props=L.props.filter(q=>q!=p);else errs.push("no room for prop "+p.key)}
+    if(!errs.length)for(const p of [...L.props])if(!(p.user?placeUser(s.id,L,p):placeFree(s.id,L,p,propBox))){if(p.optional)L.props=L.props.filter(q=>q!=p);else errs.push("no room for prop "+p.key)}
     if(!errs.length)for(const d of [...L.doodles])if(!placeFree(s.id,L,d,dBox))L.doodles=L.doodles.filter(q=>q!=d);
     let vis=[];if(!errs.length)for(const f of sceneStates(s))for(let b=0;b<3;b++){const a=auditState(s.id,f,b);errs.push(...a.v);if(a.st.buildingVisible!=null)vis.push(a.st.buildingVisible)}
     if(!errs.length&&vis.length&&Math.max(...vis)<0.35)errs.push("building hidden behind people in both positions (max visible "+Math.max(...vis).toFixed(2)+")");
@@ -309,12 +326,13 @@ async function init(manifest,seed){M=manifest;SEED=seed;const st=M.style||{};P=O
    crumpled:"../raw/tex/crumpled.jpg",kraft:"../raw/tex/kraft.png"};
   for(const n of [4,5,6,7,8])files["L"+n]="../assets/S"+n+"_landscape.jpg";
   for(const p of ["S2_person","S4_person","S5_A","S5_B","S6_A","S6_B","S7_A","S7_B","S8_person","S9_person","S10_person"])files[p]="../cut/"+p+".png";
+  for(const sc of (M.scenes||[])){const u=sc.slots&&sc.slots.prop_user;if(u)files["U_"+sc.id]="../"+(typeof u=="string"?u:u.file)}   // v9 user prop stickers
   for(const k in files)IMG[k]=await load(files[k]);
   TVS=await (await fetch("../"+(slot("S1","prop_tv_screen")||"cut/props/tv.screen.json"))).json();
   for(let b=0;b<3;b++){const c=document.createElement("canvas");c.width=c.height=512;const x=c.getContext("2d");const im=x.createImageData(512,512);const r=mulberry32(77+b);for(let i=0;i<im.data.length;i+=4){const v=r()*255;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255}x.putImageData(im,0,0);NOISE.push(c)}
   await document.fonts.ready;RANSOM=buildRansom();buildLayouts();
   return {seed:SEED,preset:st.preset||"retro-warm",randomness:st.randomness||"medium",rerolls:REROLLS,tv_screen:TVS,
-    layout:Object.fromEntries(Object.entries(LAYOUT).map(([k,v])=>[k,{sheets:v.sheets.map(b=>b.kind+" "+b.color),props:v.props.map(p=>p.key+"@"+Math.round(p.x)+","+Math.round(p.y)),doodles:v.doodles.map(d=>d.kind),
+    layout:Object.fromEntries(Object.entries(LAYOUT).map(([k,v])=>[k,{sheets:v.sheets.map(b=>b.kind+" "+b.color),props:v.props.map(p=>p.key+"@"+Math.round(p.x)+","+Math.round(p.y)),userProps:v.props.filter(p=>p.user).map(p=>({key:p.key,x:Math.round(p.x),y:Math.round(p.y),w:Math.round(p.w),anchor:p.anchor,nudge:p.nudge})),doodles:v.doodles.map(d=>d.kind),
       script:v.script?{font:v.script.font,size:v.script.size,lines:v.script.lines,color:v.script.color,contrast:v.script.contrast}:null,feet:Math.round(v.feet),pscale:v.pscale,photo:v.pieces.map(p=>({mask:p.mask,cover:p.cover,zoom:+p.zoom.toFixed(2)})),pos:v.pos}]))}}
 let RANSOM=null;
 // ---------- scene drawing: base sheet → stacked sheets → building photo → info cards → text → doodle → prop → contact shadow → people ----------
