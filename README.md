@@ -80,3 +80,5 @@
 ## 注意
 
 `collage-stopmotion-invite/assets/slot_layout.jpg` 含参考视频的截帧，仅供私人学习研究，请勿公开分发。仓库不包含参考视频原片及其他第三方版权素材。
+
+- `match-cut-discovery-montage`：弧线地平线匹配剪辑 · 发现蒙太奇（20s 发布短片，35 镜锁定节奏，Canvas 渲染 + QA）
