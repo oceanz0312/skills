@@ -1,9 +1,9 @@
 ---
 name: collage-sticker-doodle
-description: 通用"贴纸涂鸦拼贴定格"竖屏短视频生成器（HTML Canvas + Playwright + FFmpeg）。真人抠图白边贴纸 + 撕纸大色块 + 风景照拼贴 + 手写深墨字 + 程序化贴纸/涂鸦，按 BGM 节拍定格抖动、A/B 两位闪切。没有预设主题：agent 读用户的描述和素材，写一份故事板 plan.json（场合、情绪、风格包、色彩倾向、每场用什么素材、写什么字、贴什么贴纸、怎么转场和闪），校验后渲染，seed 只随机故事板没定的细节；5 个风格包（手账 / 杂志剪报 / 复古海报 / 街头涂鸦 / 胶片小志），带标签的程序化元素库（气球、蛋糕、票根、戒指、爪印、雨伞、雨滴、学士帽……）。用户说"把这些照片做成拼贴/贴纸/涂鸦/手账风/杂志拼贴/定格卡点视频"，任何场合（旅行、毕业、宠物、生日、纪念日、日常 vlog、雨天散步……）都用它。只要逐帧复刻那条 38 秒婚礼请柬参考片（固定 10 场景、TV 开场、色卡结尾）时，用 collage-stopmotion-invite。
+description: 通用"贴纸涂鸦拼贴定格"竖屏短视频生成器（HTML Canvas + Playwright + FFmpeg）。真人抠图白边贴纸 + 撕纸大色块 + 风景照拼贴 + 手写深墨字 + 程序化贴纸/涂鸦，按 BGM 节拍定格抖动、A/B 两位闪切。没有预设主题：agent 读用户的描述和素材，写一份故事板 plan.json（场合、情绪、风格包、色彩倾向、每场用什么素材、写什么字、贴什么贴纸、怎么转场和闪），校验后渲染，seed 只随机故事板没定的细节；5 个风格包（手账 / 杂志剪报 / 复古海报 / 街头涂鸦 / 胶片小志），带标签的程序化元素库（气球、蛋糕、票根、戒指、爪印、雨伞、雨滴、学士帽……）。另含锁定风格包 invite-classic：逐帧复刻 38.43 秒婚礼请柬参考片（小红书 末路狂猫 风格：TV 开场、剪字标题、钢笔信笺、A/B 闪、流程卡、色卡结尾），agent 只填照片/人物/文案。用户说"把这些照片做成拼贴/贴纸/涂鸦/手账风/杂志拼贴/定格卡点视频"、"婚礼请柬视频""末路狂猫那种风格""拼贴定格请柬"，任何场合（婚礼、旅行、毕业、宠物、生日、纪念日、日常 vlog、雨天散步……）都用它。
 ---
 
-# 贴纸涂鸦拼贴定格 · 通用生成器（collage-sticker-doodle v2）
+# 贴纸涂鸦拼贴定格 · 通用生成器（collage-sticker-doodle v3）
 
 从 collage-stopmotion-invite v8 泛化而来：**手艺不变（定格 boil、白边抠图、撕纸、深墨手写、全部 P0），版式放开**。一次渲染 = manifest（素材 + BGM）+ **故事板 plan.json（agent 根据用户描述写）** + seed。v2 去掉了预设主题：结构、文案、贴纸由故事板决定，seed 只填细节；同故事板同 seed 逐像素复现。
 
@@ -19,6 +19,14 @@ description: 通用"贴纸涂鸦拼贴定格"竖屏短视频生成器（HTML Can
 | **P0-7 人物零遮挡** | 人物贴纸任一像素都不许被任何东西盖（含转场）。 | 人物最后画；撕纸/盖章转场期间两边都不画人物，落地后人物才出现；逐帧像素比对（被盖 >0 px 即 FAIL） |
 
 **随机只在 P0 之内**：seed 改结构、风格细节、贴纸种类和位置，但每个场景随机后都要过审计，不过就重掷；40 次都不过 → 退出码 3。
+
+## 先选路径：invite-classic 还是故事板
+| 用户要的是 | 选 | 怎么做 |
+|---|---|---|
+| 婚礼请柬 / "末路狂猫那种" / "照参考片做一条" / 要和原片节奏、构图几乎一样 | **`pack: invite-classic`**（锁定） | 结构完全固定（S1–S10、38.43 s、逐帧事件表、A/B 只在 S5–S7、唯一硬切 S9、TV 开场、砖红首尾、色卡结尾、马善政钢笔信笺/流程、实测色板、白边与 boil 幅度、P0-1…7）。agent 只填槽位：照片、人物（S5–S7 要 A/B 对）、文案（`slots`）、`names`、可选 `preset`（retro-warm / morandi / summer-island / film-night）。seed 只动允许的装饰容差。读 `references/invite-classic/README.md`。 |
+| 其它一切（任何场合、想要变化、不同时长） | 其它 5 个包 | 写故事板（下面）。 |
+
+invite-classic 用 v8 的槽位 manifest（`assets/invite-classic.manifest.example.json`）+ 故事板 `{"pack":"invite-classic","slots":{...},"names":{...}}`（`assets/plan.example.invite-classic.json`）。`run.py --plan` 看到 pack=invite-classic 自动走 `render_template/invite/` + `run_invite.py`；校验 `validate_plan.py`（结构锁定：写 scenes/intro/outro 会被 REJECT）+ `invite_validate.py manifest.json`（字长、字形、P0-6、A/B 同机位）。渲染输出的 meta 与 QA（`qa_compare.py`）两条路径共用，P0 判定一样。
 
 ## 谁决定什么
 | 维度 | 故事板（agent 写） | seed（只在故事板没写时） |
@@ -40,7 +48,8 @@ description: 通用"贴纸涂鸦拼贴定格"竖屏短视频生成器（HTML Can
 | 选风格包 / 理解每个包长什么样 | `references/style_packs.md` |
 | 加贴纸或涂鸦种类 | `references/elements.md` |
 | 结构、转场、闪法、seed | `references/randomness.md` |
-| **写故事板（每次必读）** | `references/storyboard.md`（schema、写作指南、两个示例 → `assets/plan.example.*.json`） |
+| **invite-classic（锁定的婚礼请柬）** | `references/invite-classic/README.md`（完整 v8 规范：时间轴、槽位、素材约束、签名）+ 同目录 timeline/slots/copywriting/... |
+| **写故事板（其它包每次必读）** | `references/storyboard.md`（schema、写作指南、两个示例 → `assets/plan.example.*.json`） |
 | 色块、撕纸、照片遮罩 | `references/background_collage.md` |
 | 手艺 DNA（必须保留的签名） | `references/signature.md` |
 | 渲染 | `scripts/render_template/`：`collage.js`（计划 + 场景 + 审计）、`packs.js`、`index.html`、`run.py` |
