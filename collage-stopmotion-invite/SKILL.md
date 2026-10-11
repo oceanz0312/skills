@@ -6,6 +6,7 @@ description: 用代码（HTML Canvas + Playwright + FFmpeg）做"拼贴手账定
 # 拼贴手账定格风 · 请柬视频模板（v9）
 
 > **v9**：人物默认保留原片颜色（新增 P0-8 原色检查）；S1 电视开场、恰好 5 个风景、非风景场景纯色撕纸底写成默认规则；新增用户道具贴纸（宠物等）`prop_user`、人物锁定 `--lock-from`、贴纸抽取 `extract_sticker.py`。每条默认都有覆盖开关，见下方「v9 默认规则与覆盖开关」。
+> **v10**：新增 P0-9 漂浮碎片面积上限、P0-10 涂鸦不压字、P0-11 成片必须有 BGM（缺音频即 FAIL）。
 > **v8**：中文全部用马善政手写体（深黑加粗墨色）；人物不可被任何元素遮挡（逐帧逐像素审计，被盖 >0 像素即 FAIL）；含 v6 近满版不规则遮罩背景与 v7 人物完整性检查。
 
 ## ⛔ P0 硬规则（任何随机参数都不许破坏；渲染器逐帧审计，违反即判定 FAIL）
@@ -19,6 +20,9 @@ description: 用代码（HTML Canvas + Playwright + FFmpeg）做"拼贴手账定
 | **P0-6 人物完整（v7）** | 每个人物贴纸里的人必须是完整的：不许只剩头+手臂、缺躯干/肢体、有漂浮碎片，也不许在左/右/上边被裁（只允许脚/腿被画面底边裁）。抠图阶段和成片阶段各查一次。 | cutout.py 抠完即跑 `person_check`（MediaPipe 多人姿态 + mask 连通性 + 边缘裁切），失败自动换 rembg 模型/合并参数，全失败退出码 3 → 换素材；run.py `--person-check` 在每场景落位帧 + 每个 A/B / 跳动帧把源图关键点按该帧真实贴纸变换映射到成片上，必须落在画出的贴纸像素里，违规退出码 4；qa_compare 的 `P0-6_person_complete` 失败 → 不能交付 |
 | **P0-7 人物永不被遮挡（v8）** | 任何一帧里，人物贴纸的任何像素都不许被任何东西盖住：道具、文字、涂鸦、照片、色块、胶带、花、电视机框/玻璃反光、转场都不行。人物永远最后画（只有全片 4% 颗粒在最上层）。S1 电视屏里的 S2 情侣也是在电视框、反光、标题、名字之后单独再画，可以"探出"屏幕，但不被裁也不被盖。 | 像素级：run.py 对每个唯一帧关掉颗粒重画一次并记录每次人物 drawImage 的完整变换，再把贴纸单独画出来；贴纸不透明像素与成片像素差 >3 的个数必须 = 0，否则 `P0-7 person occluded Npx` → 退出码 3；qa_compare `P0-7_no_occlusion` |
 | **P0-8 人物保留原色（v9）** | 人物贴纸的平均饱和度 ÷ 源照片同一 mask 区域的平均饱和度 ≥ 0.9；只有风景照可以加胶片暖调，渲染器从不给人物加滤镜。 | `cutout.py` 默认 `--grade none`；`qa_compare.py` 自动调 `scripts/color_check.py`，<0.9 → FAIL。`style.personGrade="film-warm"` 时跳过（需用户明确要求） |
+| **P0-9 无漂浮碎片** | 人物/道具贴纸 mask 上，除主体外任何连通块面积：脚底区域 >400 px²、其余 >800 px² → FAIL。典型违规：抠图留下的三脚架/支架/地面残段。 | `cutout.py` 抠完跑 `scripts/debris_check.py`；失败换模型/清残段/换素材，退出码 3；`qa_compare` 扫 `cut/*.png` |
+| **P0-10 涂鸦不压字** | 程序化涂鸦、胶带、手绘线不得穿过或盖住可读文字（英文情话、名字、信笺、流程卡、名牌）。涂鸦与文字的像素重叠必须 = 0。 | 渲染器在 `render_meta.audit.doodle_text_overlap_px` 记录；>0 退出码 3；`qa_compare` 的 `P0-10_doodle_text` |
+| **P0-11 必须有 BGM** | `manifest.bgm.file` 必须指向存在的音频；成片 MP4 必须有音轨。无声轨不能交付。 | `validate_manifest` 缺 BGM → REJECT；`qa_compare` 用 ffprobe 查音频流，无则 `P0-11_audio` FAIL |
 
 **randomness 只在 P0 之内变化**：seed 可以改形状、角度、字体、颜色、道具位置，但每次随机后都要过 P0 审计，不过就重掷（每场景最多 40 次）；40 次都不过 → 渲染退出码 3。
 
@@ -62,7 +66,7 @@ description: 用代码（HTML Canvas + Playwright + FFmpeg）做"拼贴手账定
 6. **渲染**：把 render_template 放到项目根目录 `render/`（含 person_check.py），字体放 `fonts/`，然后 `python render/run.py all frames --seed N --person-check --person-sheet person_check_sheet.jpg`。run.py 在每个唯一帧的真实绘制调用上做 P0 审计，写进 `render_meta`；有 P0 违规退出码 3，字形缺失退出码 2。同 seed 逐像素复现。
    `ffmpeg -framerate 30 -i frames/%05d.png -i bgm.mp3 -c:v libx264 -pix_fmt yuv420p -crf 18 -shortest out.mp4`
 7. **成片人物检查（P0-6 成片侧，交付前必做，不能跳过）**：`--person-check` 对每场景落位帧 + 每个 A/B / 跳动帧导出"只画人物"的图层，把源图姿态关键点按该帧真实的贴纸位置/缩放/旋转/抖动映射到成片上：落在画外下方 = 允许；落在左/右/上边外 = FAIL；落在画面内却不在贴纸像素上 = 缺身体 FAIL。同时查贴纸碰左/右/上边、碎块。在贴纸单独图层上重跑姿态只作 WARN。违规 → 退出码 4。`person_check_sheet.jpg` 是逐场景拼图（绿=通过，黄=有警告，红=失败，蓝点=映射关键点，红点=缺失关键点）：**交付前必须由人或 agent 逐行看一遍**，黄框（漏检警告）尤其要确认两个人都是完整的。
-8. **QA**（v6 多一项 `V6_photo`：每场景遮罩类型、最小画内覆盖率、全片不同遮罩数）：`python scripts/qa_compare.py out.mp4 --ref ref.mp4 --meta render_meta.json --json qa.json`。P0-1…P0-8、字形全覆盖任何一项失败（没带 --person-check 跑出的 meta 会让 P0-6 直接失败） → 退出码 1，这片不能交付。另外看：静止帧差 <0.2、网格步长 12.25±0.1、最大残差 ≤1.5 帧、A/B / 跳动位移 ≥ 头高。最后自己逐场景看帧，对着 P0 表核一遍。
+8. **QA**（v6 多一项 `V6_photo`：每场景遮罩类型、最小画内覆盖率、全片不同遮罩数）：`python scripts/qa_compare.py out.mp4 --ref ref.mp4 --meta render_meta.json --json qa.json`。P0-1…P0-11、字形全覆盖任何一项失败（没带 --person-check 跑出的 meta 会让 P0-6 直接失败） → 退出码 1，这片不能交付。另外看：静止帧差 <0.2、网格步长 12.25±0.1、最大残差 ≤1.5 帧、A/B / 跳动位移 ≥ 头高。最后自己逐场景看帧，对着 P0 表核一遍。
    v9：qa_compare 读 `--manifest manifest.json`（默认当前目录）做 P0-8；重渲染只换风景/道具时加 `--lock-from` 锁人物。
 8. **交付**：v9 报告必须含：舍弃的地点（默认 3）、道具贴纸坐标与是否被迫偏移（默认 5）、被挡住的风景主体（默认 7）、所有覆盖开关（偏离）。mp4（+720p <10MB）+ 对比拼图 + QA JSON + seed + WARN 清单。
 

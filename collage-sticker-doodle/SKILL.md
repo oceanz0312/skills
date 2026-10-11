@@ -6,6 +6,7 @@ description: 通用"贴纸涂鸦拼贴定格"竖屏短视频生成器（HTML Can
 # 贴纸涂鸦拼贴定格 · 通用生成器（collage-sticker-doodle v4.1）
 
 > **v4.1**：人物贴纸默认保留原片颜色——`scripts/cutout.py` 默认 `--grade none`，胶片暖调（FILM 滤镜）只用于风景/建筑照片，渲染器从不给人物加滤镜（所有 pack，含 invite-classic）。交付前跑 `python scripts/color_check.py --root <项目>`：贴纸 / 源图同 mask 区域平均饱和度比 <0.9 → FAIL。用户明确要统一暖调时抠图传 `--grade film-warm` 并跳过该检查（记为偏离）。
+> **v4.2**：新增 P0-9 漂浮碎片、P0-10 涂鸦不压字、P0-11 成片必须有 BGM。
 
 v4 新增**素材预检 + 选片确认**（工作流程第 0 步，渲染前必须拿到用户确认）。从 collage-stopmotion-invite v8 泛化而来：**手艺不变（定格 boil、白边抠图、撕纸、深墨手写、全部 P0），版式放开**。一次渲染 = manifest（素材 + BGM）+ **故事板 plan.json（agent 根据用户描述写）** + seed。v2 去掉了预设主题：结构、文案、贴纸由故事板决定，seed 只填细节；同故事板同 seed 逐像素复现。
 
@@ -19,13 +20,16 @@ v4 新增**素材预检 + 选片确认**（工作流程第 0 步，渲染前必�
 | **P0-5 信息不被盖** | 文字、名牌、清单、信笺不被色块盖、彼此不重叠、人物不压文字。 | 审计 + 贴纸放置拒绝采样 |
 | **P0-6 人物完整** | 不许缺躯干/肢体、漂浮碎片、左/右/上边被裁。抠图侧 + 成片侧各查一次。 | `cutout.py` → `person_check.py`；`run.py --person-check` |
 | **P0-7 人物零遮挡** | 人物贴纸任一像素都不许被任何东西盖（含转场）。 | 人物最后画；撕纸/盖章转场期间两边都不画人物，落地后人物才出现；逐帧像素比对（被盖 >0 px 即 FAIL） |
+| **P0-9 无漂浮碎片** | 人物/道具贴纸 mask 上，除主体外任何连通块面积：脚底区域 >400 px²、其余 >800 px² → FAIL（三脚架/支架残段等）。 | `cutout.py` → `debris_check.py`；退出码 3；`qa_compare` 扫 cut/ |
+| **P0-10 涂鸦不压字** | 涂鸦/胶带/手绘线不得穿过或盖住可读文字；重叠像素必须 = 0。 | `render_meta.audit.doodle_text_overlap_px`；`qa_compare` `P0-10_doodle_text` |
+| **P0-11 必须有 BGM** | `manifest.bgm.file` 必须存在；成片必须有音轨。 | `validate_manifest` REJECT；`qa_compare` ffprobe `P0-11_audio` |
 
 **随机只在 P0 之内**：seed 改结构、风格细节、贴纸种类和位置，但每个场景随机后都要过审计，不过就重掷；40 次都不过 → 退出码 3。
 
 ## 先选路径：invite-classic 还是故事板
 | 用户要的是 | 选 | 怎么做 |
 |---|---|---|
-| 婚礼请柬 / "末路狂猫那种" / "照参考片做一条" / 要和原片节奏、构图几乎一样 | **`pack: invite-classic`**（锁定） | 结构完全固定（S1–S10、38.43 s、逐帧事件表、A/B 只在 S5–S7、唯一硬切 S9、TV 开场、砖红首尾、色卡结尾、马善政钢笔信笺/流程、实测色板、白边与 boil 幅度、P0-1…7）。agent 只填槽位：照片、人物（S5–S7 要 A/B 对）、文案（`slots`）、`names`、可选 `preset`（retro-warm / morandi / summer-island / film-night）。seed 只动允许的装饰容差。读 `references/invite-classic/README.md`。 |
+| 婚礼请柬 / "末路狂猫那种" / "照参考片做一条" / 要和原片节奏、构图几乎一样 | **`pack: invite-classic`**（锁定） | 结构完全固定（S1–S10、38.43 s、逐帧事件表、A/B 只在 S5–S7、唯一硬切 S9、TV 开场、砖红首尾、色卡结尾、马善政钢笔信笺/流程、实测色板、白边与 boil 幅度、P0-1…P0-11）。agent 只填槽位：照片、人物（S5–S7 要 A/B 对）、文案（`slots`）、`names`、可选 `preset`（retro-warm / morandi / summer-island / film-night）。seed 只动允许的装饰容差。读 `references/invite-classic/README.md`。 |
 | 其它一切（任何场合、想要变化、不同时长） | 其它 5 个包 | 写故事板（下面）。 |
 
 invite-classic 用 v8 的槽位 manifest（`assets/invite-classic.manifest.example.json`）+ 故事板 `{"pack":"invite-classic","slots":{...},"names":{...}}`（`assets/plan.example.invite-classic.json`）。`run.py --plan` 看到 pack=invite-classic 自动走 `render_template/invite/` + `run_invite.py`；校验 `validate_plan.py`（结构锁定：写 scenes/intro/outro 会被 REJECT）+ `invite_validate.py manifest.json`（字长、字形、P0-6、A/B 同机位）。渲染输出的 meta 与 QA（`qa_compare.py`）两条路径共用，P0 判定一样。
@@ -74,7 +78,7 @@ invite-classic 用 v8 的槽位 manifest（`assets/invite-classic.manifest.examp
    `python render/run.py all frames --seed N --manifest manifest.json --plan plan.json --meta meta.json --person-check --person-sheet person_check.jpg`
    日志打印实际 plan（含 warnings：降级的闪法、被丢的场景）。退出码：2 字形缺失、3 P0 违规、4 P0-6 失败。
    `ffmpeg -framerate 30 -i frames/%05d.png -i bgm.mp3 -t <dur> -c:v libx264 -pix_fmt yuv420p -crf 18 -shortest out.mp4`
-6. **QA（交付前必做）**：`python scripts/qa_compare.py out.mp4 --meta meta.json --T <meta.plan.boilT> --sheet qa_sheet.jpg --json qa.json`。P0-1…P0-7、字形任何一项失败 → 退出码 1。看一眼 qa_sheet 和 person_check 拼图。
+6. **QA（交付前必做）**：`python scripts/qa_compare.py out.mp4 --meta meta.json --T <meta.plan.boilT> --sheet qa_sheet.jpg --json qa.json`。P0-1…P0-11、字形任何一项失败 → 退出码 1。看一眼 qa_sheet 和 person_check 拼图。
 7. **迭代**：不满意改故事板（换场景顺序、文案、贴纸、转场），seed 只用来换细节。交付时附 plan.json + seed。
 
 ## 不变的手艺（签名）
