@@ -2,8 +2,7 @@
 
 ```json
 {
- "theme": "travel",                       // wedding | travel | anniversary | birthday | vlog
- "style": {"pack": "magazine", "randomness": "medium"},   // pack 见 style_packs.md；randomness low|medium|high 只放大装饰幅度
+ "style": {"randomness": "medium"},       // pack 由故事板 plan.json 决定；randomness low|medium|high 只放大装饰幅度
  "bgm": {"file": "assets/bgm.mp3", "T": 12.25, "offset_frames": 3.4, "duration_sec": 38.4, "max_sec": 60},
  "places": [{"file": "assets/x.jpg", "subject": {"u":0.5,"v":0.05,"w":0.4,"h":0.5}, "ground": 0.90}],
  "people": [
@@ -12,9 +11,12 @@
     "srcB": {"photo": "assets/S5_B.jpg", "mask": "cut/S5_B.mask.png"}},
    {"id": "s2", "A": "cut/S2_person.png", "src": {"photo": "assets/S2_person.jpg", "mask": "cut/S2_person.mask.png"}}],
  "props": {"tv": {"file": "cut/props/tv.png", "screen": "cut/props/tv.screen.json"}},   // 可选；有了才可能抽到 tv 开场
- "names": {"a": "Lin", "b": "Zhou"}, "info": {"date": "2026.10.01", "place": "里斯本"},
- "copy": {"quotes": ["..."], "note_zh": ["..."], "list_title": "...", "list": ["..."], "closing": ["..."], "end": "THE END"}   // 可选，覆盖主题模板
+ "names": {"a": "Lin", "b": "Zhou"}, "info": {"date": "2026.10.01", "place": "里斯本"}
 }
+```
+
+文案、场景、贴纸都不在 manifest 里，写在故事板（references/storyboard.md）。
+```
 ```
 
 ## 字段说明

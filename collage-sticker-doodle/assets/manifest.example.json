@@ -144,17 +144,7 @@
    "screen": "cut/props/tv.screen.json"
   }
  },
- "theme": "travel",
  "style": {
-  "pack": "magazine",
   "randomness": "medium"
- },
- "names": {
-  "a": "Lin",
-  "b": "Zhou"
- },
- "info": {
-  "date": "2026.10.01",
-  "place": "里斯本 · 巴黎"
  }
 }

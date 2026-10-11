@@ -1,0 +1,88 @@
+{
+ "prompt": "a quiet rainy-season city walk vlog, melancholy",
+ "occasion": "rainy-season city walk vlog",
+ "mood": "quiet, melancholy, slow, grey-blue",
+ "pack": "zine",
+ "palette_bias": [
+  "#E8E4DA",
+  "#2F6BFF"
+ ],
+ "boil": 1,
+ "intro": {
+  "layout": "polaroid",
+  "title": "rainy season",
+  "stickers": [
+   "umbrella"
+  ]
+ },
+ "scenes": [
+  {
+   "type": "place",
+   "place": 2,
+   "person": "p7",
+   "flash": "ab2",
+   "text": "Walking in the rain",
+   "stickers": [
+    "umbrella",
+    "rainlines"
+   ],
+   "transition": "tear-down"
+  },
+  {
+   "type": "note",
+   "lines": [
+    "梅雨季的城市",
+    "伞下的街道很安静",
+    "咖啡凉得很慢",
+    "我们也走得很慢"
+   ],
+   "stickers": [
+    "raindrop",
+    "coffee"
+   ],
+   "transition": "cut"
+  },
+  {
+   "type": "place",
+   "place": 1,
+   "person": "s8",
+   "flash": "jump",
+   "text": "City lights blur",
+   "stickers": [
+    "moon",
+    "raindrop"
+   ],
+   "transition": "tear-left"
+  },
+  {
+   "type": "place",
+   "place": 0,
+   "person": "p5",
+   "flash": "ab2",
+   "text": "Grey skies, slow steps",
+   "stickers": [
+    "cloud"
+   ],
+   "transition": "cut"
+  },
+  {
+   "type": "solo",
+   "person": "s4",
+   "text": "Some days are grey",
+   "stickers": [
+    "cloud"
+   ],
+   "transition": "cut"
+  }
+ ],
+ "outro": {
+  "layout": "filmstrip",
+  "text": "until the sun comes back",
+  "person": "s9",
+  "stickers": [
+   "coffee",
+   "leaf"
+  ],
+  "transition": "tear-up"
+ }
+}
