@@ -1,0 +1,12 @@
+{
+ "_说明": "故事板模板：agent 读用户 prompt 写；没写的字段由 seed 在可调默认的容差内填。硬锁字段不出现在这里。",
+ "occasion": "自由文本，如 婚礼/生日/旅行",
+ "mood": "自由文本",
+ "pack": "风格包名（自由模式）或锁定包名（复刻原片）",
+ "palette_bias": "warm|cool|<包内色板名>",
+ "scenes": [
+  {"type": "place|solo|note|list|title", "beats": 9, "asset": "places.xxx|auto|null", "person": "people.xxx|auto|null",
+   "text": {"en": "一句话", "zh": "用户原话一字不改"}, "stickers": ["元素名或标签"], "transition": "cut|pan-left|tear|stamp", "flash": "none|ab"}
+ ],
+ "intro": "tv|title|none", "outro": "swatch|card|none"
+}
