@@ -10,7 +10,7 @@ const rr=(r,a,b)=>a+(b-a)*r(); const pick=(r,a)=>a[Math.floor(r()*a.length)];
 function boilOf(f){let n=0;for(const g of GRID){if(g<=f)n++;else break}return n%3}
 function load(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(src);i.src=src})}
 const slot=(sid,k)=>{const s=SCENES.find(x=>x.id==sid);return s&&s.slots?s.slots[k]:undefined};
-// ---------- audit registry: every drawn element registers its device-space polygon ----------
+// ---------- audit list: every drawn element registers its device-space polygon ----------
 function tf(ctx,pts){const T=ctx.getTransform();return pts.map(([a,b])=>[T.a*a+T.c*b+T.e,T.b*a+T.d*b+T.f])}
 function reg(ctx,cat,id,x,y,w,h,extra){if(!AUD)return;AUD.push({cat,id,poly:tf(ctx,[[x,y],[x+w,y],[x+w,y+h],[x,y+h]]),...(extra||{})})}
 function regPoly(ctx,cat,id,pts,extra){if(!AUD)return;AUD.push({cat,id,poly:tf(ctx,pts),...(extra||{})})}

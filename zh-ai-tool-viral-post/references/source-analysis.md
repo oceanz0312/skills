@@ -59,7 +59,7 @@
 - 偏干货约 25%–30%。例子：
   - 提示词系列（2025-12）
   - 飞书加 Codex 的用法清单：https://x.com/Astronaut_1216/status/2070361876278780220
-  - 开源 ah-skill 抖音逐字稿工具，给了 token 消耗数据：https://x.com/Astronaut_1216/status/2105230707488698592
+  - 开源 ah-skill 抖音逐字稿工具，给了模型用量数据：https://x.com/Astronaut_1216/status/2105230707488698592
   - 小红书爆款封面拆解：https://x.com/Astronaut_1216/status/2046851652226068683
 - 偏噱头 / 种草约 30%–40%，D 阶段明显上升。例子：
   - "产品做大能取代 openAI"：https://x.com/Astronaut_1216/status/2108544691612635552
