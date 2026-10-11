@@ -3,13 +3,9 @@
 所有随机都来自 `seeded(key)` = mulberry32(hash(seed|key))，同 seed 同 manifest 逐像素复现。
 
 ## 计划（makePlan，key "plan"）
-1. 帧数 = duration_sec × 30；拍点 `BEATS = round(offset + k·T)`。
-2. boil 网格：包里抽 1 拍或 ½ 拍。
-3. 开场（包的 intros，tv 需要 props.tv）和结尾（outros）各抽一个；开场 4–6 拍（tv 固定 6），结尾 8–13 拍。
-4. 中间场景池 = 每张风景一个 place + note + list +（开场不是 ransom 时）ransom + 最多 2 个 solo；随机顺序依次装入剩余拍数（每种有最短/最长拍数），余下的拍数轮流加给各场景，再余下的给结尾。
-5. 转场：每场景从包的 transitions 抽；tv 开场之后固定 cut（屏幕推满就是转场）。
-6. 人物：A/B 对优先进 place 场景，单张进其它场景，不够就轮换复用。闪法从包的 flash 抽（单张只能 jump）。所有人物事件都在拍点上，落位（转场结束）后 ≥10 帧才开始。
-7. 色板：每场景从包色板池抽，相邻不重复。文案：主题模板 + manifest.copy，情话全片不重复（不够才循环）。
+故事板（plan.json）写死的东西 seed 不碰：场景类型和顺序、照片/人物、文字、贴纸、转场、闪法、开场/结尾版式、boil。
+故事板没写的由 seed 填：开场/结尾版式（包的允许列表）、各场拍数（类型范围内）、转场（包的 transitions）、闪法（包的 flash）、boil（包）、色板（palette_bias 过滤后的池里抽，相邻不重复）、贴纸（包的随机集 × 密度）。
+拍数适配 BGM：压缩 → 丢末尾场景 → 余拍轮加 → 给结尾。所有人物事件在拍点上，落位后 ≥10 帧才开始。
 
 ## 版式（makeLayout，key "<scene>|layout|<attempt>"）
 色块撕法、照片遮罩、地标居中缩放、文字字体/字号/位置/倾斜、卡片尺寸角度、人物 A/B 左右方向和倾斜、贴纸种类/颜色/大小/位置。

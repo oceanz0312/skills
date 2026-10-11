@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """collage-sticker-doodle manifest + asset validator.
 用法: python validate_manifest.py manifest.json [--root DIR]
-检查：pack/theme 合法；BGM 存在且时长/拍长 T 可用（librosa 可选，自动测 T 并与 manifest 比较）；每个 place 的照片存在、subject 框合法、远景纵深（WARN）；
+检查：pack 合法（若给）；BGM 存在且时长/拍长 T 可用（librosa 可选，自动测 T 并与 manifest 比较）；每个 place 的照片存在、subject 框合法、远景纵深（WARN）；
 每个 person：抠图 PNG + mask 存在、P0-6 人物完整性（读 cut/<stem>.check.json，没有则现场跑 person_check）、A/B 同机位 + 姿势差异；
-文案字形覆盖（pack 的中/英字体，fontTools）；素材数量够不够撑起 BGM 时长（WARN）。
+素材数量够不够撑起 BGM 时长（WARN）。
 输出 REJECT / WARN / OK，有 REJECT 退出码 1。"""
 import json, os, sys, re, argparse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -13,20 +13,14 @@ PACKS = {"scrapbook": ("Ma Shan Zheng", ["Reenie Beanie","Caveat","Homemade Appl
          "retro-poster": ("Zhi Mang Xing", ["Dancing Script","Homemade Apple","Caveat"]),
          "graffiti": ("ZCOOL KuaiLe", ["Kalam","Caveat","Reenie Beanie","Dancing Script"]),
          "zine": ("Long Cang", ["Nothing You Could Do","Reenie Beanie","Homemade Apple","Kalam","Caveat"])}
-THEMES = ["wedding", "travel", "anniversary", "birthday", "vlog"]
 FONT_FILES = {"Long Cang":"LongCang-Regular.ttf","Ma Shan Zheng":"MaShanZheng.ttf","ZCOOL KuaiLe":"ZCOOLKuaiLe-Regular.ttf","Zhi Mang Xing":"ZhiMangXing-Regular.ttf",
   "Reenie Beanie":"ReenieBeanie.ttf","Nothing You Could Do":"NothingYouCouldDo.ttf","Homemade Apple":"HomemadeApple.ttf","Caveat":"Caveat.ttf","Dancing Script":"DancingScript.ttf","Kalam":"Kalam.ttf"}
-def theme_copy(theme, here):
-    src = open(os.path.join(here, "render_template", "themes.js"), encoding="utf-8").read()
-    m = re.search(r"\n %s:\{(.*?)\},?\n [a-z]+:|\n %s:\{(.*?)\}\};" % (theme, theme), src, re.S)
-    return (m.group(1) or m.group(2)) if m else ""
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("manifest"); ap.add_argument("--root"); a = ap.parse_args()
     root = a.root or os.path.dirname(os.path.abspath(a.manifest)); m = json.load(open(a.manifest, encoding="utf-8")); here = os.path.dirname(os.path.abspath(__file__))
     out = []; R = lambda lvl, msg: out.append((lvl, msg))
-    pack = m.get("style", {}).get("pack", "scrapbook"); theme = m.get("theme", "vlog")
-    R("OK" if pack in PACKS else "REJECT", f"style.pack = {pack}（可选 {', '.join(PACKS)}）")
-    R("OK" if theme in THEMES else "REJECT", f"theme = {theme}（可选 {', '.join(THEMES)}）")
+    pack = (m.get("storyboard") or {}).get("pack") or m.get("style", {}).get("pack")
+    if pack: R("OK" if pack in PACKS else "REJECT", f"pack = {pack}（可选 {', '.join(PACKS)}）")
     bg = m.get("bgm", {}); bp = os.path.join(root, bg.get("file", "-"))
     if not os.path.exists(bp): R("REJECT", f"BGM 不存在 {bg.get('file')}")
     else:
@@ -63,19 +57,7 @@ def main():
             stem = os.path.basename(pe["src"]["mask"]).replace("_A.mask.png", "")
             lvl, msg = ab_check(os.path.join(root, pe["src"]["photo"]), os.path.join(root, pe["srcB"]["photo"]), root, stem, {})
             R(lvl, f"{pe['id']} " + msg)
-    # glyph coverage: theme template + manifest copy/names/info must exist in the pack fonts
-    try:
-        from fontTools.ttLib import TTFont
-        txt = theme_copy(theme, here) + json.dumps([m.get("copy", {}), m.get("names", {}), m.get("info", {})], ensure_ascii=False)
-        cjk = {c for c in txt if ord(c) >= 0x2E80 and c.strip()} | set("0123456789:.&·："); lat = {c for c in txt if ord(c) < 128 and c.isalnum()}
-        zh, ens = PACKS.get(pack, PACKS["scrapbook"])
-        for fam in [zh] + ens:
-            p = os.path.join(root, "fonts", FONT_FILES[fam])
-            if not os.path.exists(p): R("REJECT", f"字体文件缺失 fonts/{FONT_FILES[fam]}"); continue
-            cm = TTFont(p, fontNumber=0).getBestCmap(); need = cjk if fam == zh else lat
-            miss = sorted(c for c in need if ord(c) not in cm)
-            R("REJECT" if miss and fam == zh else ("WARN" if miss else "OK"), f"字形 {fam}: " + ("缺 " + "".join(miss[:30]) if miss else "全覆盖"))
-    except ImportError: R("WARN", "未安装 fontTools，跳过字形检查")
+    # 文字字形检查在 validate_plan.py（文案由故事板给出）
     if bg.get("duration_sec", 38) > 20 and len(places) + len(people) < 4: R("WARN", "素材少于 4 组，长 BGM 会大量复用素材（建议 ≥3 张风景 + ≥2 组人物）")
     for lvl, msg in out: print(f"[{lvl}] {msg}")
     n = sum(1 for l, _ in out if l == "REJECT"); print(f"\n{n} REJECT, {sum(1 for l,_ in out if l=='WARN')} WARN"); sys.exit(1 if n else 0)

@@ -1,0 +1,127 @@
+{
+ "prompt": "college graduation trip with friends, energetic",
+ "occasion": "college graduation trip",
+ "mood": "energetic, loud, sunny, goofy",
+ "pack": "magazine",
+ "palette_bias": [
+  "#F1C40F",
+  "#E63946"
+ ],
+ "boil": 0.5,
+ "intro": {
+  "layout": "ransom",
+  "title": "CLASS OF 2026",
+  "person": "s2",
+  "stickers": [
+   "cap",
+   "burst"
+  ]
+ },
+ "scenes": [
+  {
+   "type": "place",
+   "place": 3,
+   "person": "p5",
+   "flash": "ab",
+   "text": "We made it!",
+   "stickers": [
+    "cap",
+    "star"
+   ],
+   "transition": "stamp"
+  },
+  {
+   "type": "place",
+   "place": 0,
+   "person": "p7",
+   "flash": "stutter",
+   "text": "Road trip mode: ON",
+   "stickers": [
+    "plane",
+    "bolt"
+   ],
+   "transition": "pan-left"
+  },
+  {
+   "type": "list",
+   "person": "s4",
+   "title": "毕业旅行清单",
+   "items": [
+    "看一次冰岛的山",
+    "在海边跳进水里",
+    "通宵聊到天亮"
+   ],
+   "stickers": [
+    "check",
+    "ticket"
+   ],
+   "transition": "cut"
+  },
+  {
+   "type": "place",
+   "place": 4,
+   "person": "s8",
+   "flash": "jump",
+   "text": "Sun, sea, squad",
+   "stickers": [
+    "sun",
+    "camera"
+   ],
+   "transition": "stamp"
+  },
+  {
+   "type": "solo",
+   "person": "s9",
+   "flash": "jump",
+   "text": "Squad goals",
+   "stickers": [
+    "crown",
+    "heart"
+   ],
+   "transition": "cut"
+  },
+  {
+   "type": "ransom",
+   "person": "s10",
+   "text": "NO MORE EXAMS",
+   "stickers": [
+    "party"
+   ],
+   "transition": "cut"
+  },
+  {
+   "type": "ransom",
+   "person": "s4",
+   "text": "ROAD TRIP!",
+   "stickers": [
+    "plane"
+   ],
+   "transition": "stamp"
+  },
+  {
+   "type": "place",
+   "place": 1,
+   "person": "p5",
+   "flash": "ab2",
+   "text": "Last night in Paris",
+   "stickers": [
+    "star",
+    "balloon"
+   ],
+   "transition": "pan-up"
+  }
+ ],
+ "outro": {
+  "layout": "wall",
+  "text": "Class dismissed!",
+  "person": "s2",
+  "stickers": [
+   "cap",
+   "balloon",
+   "ticket",
+   "burst",
+   "gift"
+  ],
+  "transition": "stamp"
+ }
+}

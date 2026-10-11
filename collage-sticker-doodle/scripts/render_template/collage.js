@@ -144,7 +144,7 @@ function placePeople(sid,L,r){const sc=SCENES.find(x=>x.id==sid);const kA=sc.per
   for(const ps0 of [1,0.94,0.88,0.82,0.76,0.7,0.64].filter(x=>x<=L.pcap+1e-6)){const ps=ps0*(BASE[sid]?0.92:1);L.pscale=ps;const rot=rr(r,2.5,5)*LV.tilt;const side=r()<0.5?1:-1;
     const gA=personGeom(kA,{dx:0,dy:0,s:1,rot},L),gB=personGeom(kB,{dx:0,dy:0,s:0.96,rot},L);const head=Math.max(0.10*H,0.14*gA.h)*1.08;
     const mA=W/2-MARGIN-worst(gA).hw,mB=W/2-MARGIN-worst(gB).hw;const dx=Math.min((BASE[sid]?0.2:0.16)*W,mA,mB);if(dx<0)continue;
-    let dy=0;if(2*dx<head){if(sc.person=="jump")dy=Math.sqrt(head*head-4*dx*dx);else{if(2*dx<0.55*head)continue;dy=Math.min(0.075*H,Math.sqrt(head*head-4*dx*dx))}}   /* A/B: B gets a small hop when the side shift alone is < head height */
+    let dy=0;if(2*dx<head){if(sc.person=="jump")dy=Math.sqrt(head*head-4*dx*dx)+0.03*gA.h;   /* +3%h: B is drawn at 0.96 scale, so its centre rises less than its feet */else{if(2*dx<0.55*head)continue;dy=Math.min(0.075*H,Math.sqrt(head*head-4*dx*dx))}}   /* A/B: B gets a small hop when the side shift alone is < head height */
     L.pos=[{dx:-side*dx,dy:0,s:1,rot:-side*rot},{dx:side*dx,dy:-dy,s:0.96,rot:side*rot}];return true}
   L.pos=[{dx:0,dy:0,s:1,rot:0},{dx:0,dy:-0.1*H,s:1,rot:0}];return false}
 let BASE={};
@@ -251,7 +251,7 @@ function assertGlyphs(){const c=document.createElement("canvas").getContext("2d"
   for(const font in USED)for(const ch of USED[font]){if(!ch.trim())continue;c.font=`40px "${font}", monospace`;const a=c.measureText(ch).width;c.font=`40px "${font}", serif`;const b=c.measureText(ch).width;if(Math.abs(a-b)>0.01)bad.push(font+":"+ch)}
   return bad}
 function usedFonts(){return Object.fromEntries(Object.entries(USED).map(([k,v])=>[k,v.size]))}// ===================== collage-sticker-doodle: plan + scenes =====================
-let TEX={},COPY=null,SRC={},USEDQ=new Set();
+let TEX={},SRC={},USEDQ=new Set();
 function fill(t){const n=M.names||{},i=M.info||{};return String(t).replace(/\{a\}/g,n.a||"").replace(/\{b\}/g,n.b||"").replace(/\{date\}/g,i.date||"").replace(/\{place\}/g,i.place||"")}
 // ---------- procedural textures (no third-party assets) ----------
 function procTex(kind){const w=1024,h=1820;const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");const r=mulberry32(hash("tex|"+kind));x.fillStyle="#d8d8d8";x.fillRect(0,0,w,h);
@@ -262,50 +262,68 @@ function procTex(kind){const w=1024,h=1820;const c=document.createElement("canva
     for(let i=0;i<600;i++){x.fillStyle=`rgba(0,0,0,${0.12*r()})`;x.beginPath();x.arc(r()*w,r()*h,r()*5,0,7);x.fill()}x.strokeStyle="rgba(0,0,0,0.12)";for(let i=0;i<14;i++){x.lineWidth=1+r()*2;x.beginPath();let px=r()*w,py=r()*h;x.moveTo(px,py);for(let k=0;k<8;k++){px+=(r()-0.5)*160;py+=r()*120;x.lineTo(px,py)}x.stroke()}}
   else if(kind=="photocopy"){const d=x.getImageData(0,0,w,h);for(let i=0;i<d.data.length;i+=4){const v=r()<0.012?40:225+25*(r()-0.5);d.data[i]=d.data[i+1]=d.data[i+2]=v}x.putImageData(d,0,0);x.fillStyle="rgba(0,0,0,0.10)";for(let i=0;i<40;i++)x.fillRect(0,r()*h,w,1+r()*3)}
   return c}
-// ---------- plan: duration, beats, scene count/order, transitions, flash + boil modes ----------
-function makePlan(){const r=seeded("plan");const bg=M.bgm||{};const T=bg.T||12.25,off=bg.offset_frames??3.4;const dur=Math.min(bg.duration_sec||38.4,bg.max_sec||60);TOTAL=Math.round(dur*30);
-  BEATS=[];for(let k=0;off+k*T<TOTAL-2;k++)BEATS.push(Math.round(off+k*T));
-  const boilMult=pick(r,P.boil);GRID=boilMult==1?[...BEATS]:BEATS.flatMap((b,i)=>[b,Math.round(b+T/2)]).filter(x=>x<TOTAL);
-  const nb=BEATS.length;const hasTV=!!(M.props&&M.props.tv);let intro=pick(r,P.intros.filter(k=>k!="tv"||hasTV));if(!intro)intro="badge";
-  const outro=pick(r,P.outros);const introB=intro=="tv"?6:Math.round(rr(r,4,6.99)),outroB=Math.round(rr(r,8,12.99));
-  const people=[...M.people];const pairs=people.filter(p=>p.B),singles=people.filter(p=>!p.B);const places=[...M.places].sort(()=>r()-0.5);
-  const pool=places.map((pl,i)=>({kind:"place",place:M.places.indexOf(pl)}));
-  pool.push({kind:"note"},{kind:"list"});if(intro!="ransom")pool.push({kind:"ransom"});for(let i=0;i<Math.min(2,singles.length);i++)pool.push({kind:"solo"});
-  const LEN={place:[7,10],solo:[6,9],note:[9,12],list:[8,11],ransom:[5,7]};
-  let avail=nb-introB-outroB;const mids=[];for(const c of pool.sort(()=>r()-0.5)){const mn=LEN[c.kind][0];if(avail>=mn){c.nb=mn;mids.push(c);avail-=mn}}
-  // spread the leftover beats; scenes never exceed their max length (extra beats go to the outro)
-  let guard=0;while(avail>0&&guard++<200){let any=false;for(const c of mids){if(avail>0&&c.nb<LEN[c.kind][1]){c.nb++;avail--;any=true}}if(!any)break}
-  // order: no two person-less scenes in a row, places spread out
-  for(let t=0;t<50;t++){mids.sort(()=>r()-0.5);if(mids.every((c,i)=>i==0||!(c.kind=="note"&&mids[i-1].kind=="note")))break}
-  const list=[{kind:"intro",layout:intro,nb:introB},...mids,{kind:"outro",layout:outro,nb:outroB+avail}];
-  // people: pairs go to place scenes first (A/B flash needs a same-shoot pair), singles elsewhere; round-robin reuse when assets run out
-  let pi=0,si=0;const needs=list.filter(c=>c.kind!="note");const pairQ=[...pairs].sort(()=>r()-0.5),singQ=[...singles].sort(()=>r()-0.5);
-  for(const c of needs){if((c.kind=="place"||c.kind=="solo")&&pairQ.length&&(c.kind=="place"?true:r()<0.4)){c.person=pairQ[pi++%pairQ.length]}else if(singQ.length)c.person=singQ[si++%singQ.length];else if(pairQ.length)c.person=pairQ[pi++%pairQ.length]}
-  let bi=0;SCENES=[];list.forEach((c,i)=>{const id="S"+(i+1);const start=i==0?0:BEATS[bi];bi+=c.nb;const end=i==list.length-1?TOTAL-1:BEATS[bi]-1;const s={id,kind:c.kind,layout:c.layout,place:c.place,start,end,beat0:bi-c.nb,nb:c.nb,slots:{}};
-    if(i>0){const prevTV=list[i-1].layout=="tv";let t=prevTV?"cut":pick(r,P.transitions);const b=s.beat0;
-      if(t=="pan"){const d=pick(r,["left","right","up","down"]);s.enter={type:"pan",dir:d,steps:[BEATS[b],BEATS[b+1],BEATS[b+2]],stepFrac:d=="left"||d=="right"?0.24:0.18}}
-      else if(t=="tear")s.enter={type:"tear",dir:pick(r,["left","right","up","down"]),steps:[BEATS[b],BEATS[b+1],BEATS[b+2]]};
+// ---------- plan: the storyboard (written by the agent) fixes WHAT happens; the seed only fills details it leaves open ----------
+const LEN={place:[6,10],solo:[5,9],note:[8,12],list:[8,11],ransom:[4,7]};
+function hexDist(a,b){const A=hex2rgb(a),B=hex2rgb(b);return Math.hypot(A[0]-B[0],A[1]-B[1],A[2]-B[2])}
+function makePlan(){const r=seeded("plan");const bg=M.bgm||{};const SB=M.storyboard;const T=bg.T||12.25,off=bg.offset_frames??3.4;const dur=Math.min(bg.duration_sec||38.4,bg.max_sec||60);TOTAL=Math.round(dur*30);
+  BEATS=[];for(let k=0;off+k*T<TOTAL-2;k++)BEATS.push(Math.round(off+k*T));const warn=[];
+  const boilMult=SB.boil!=null?SB.boil:pick(r,P.boil);GRID=boilMult==1?[...BEATS]:BEATS.flatMap((b,i)=>[b,Math.round(b+T/2)]).filter(x=>x<TOTAL);
+  const hasTV=!!(M.props&&M.props.tv);const IN=SB.intro||{},OUT=SB.outro||{};
+  let intro=IN.layout||pick(r,P.intros.filter(k=>k!="tv"||hasTV));if(intro=="tv"&&!hasTV){warn.push("intro tv needs props.tv -> badge");intro="badge"}
+  const outro=OUT.layout||pick(r,P.outros);const nb=BEATS.length;
+  const introB=intro=="tv"?6:(IN.beats||Math.round(rr(r,4,5.99)));let outroB=OUT.beats||Math.round(rr(r,8,11.99));
+  const mids=(SB.scenes||[]).map(s=>({...s,kind:s.type,nb:s.beats||Math.round(rr(r,LEN[s.type][0],LEN[s.type][1]+0.99))}));
+  // fit the storyboard to the music: shrink long scenes toward their minimum, then drop trailing scenes; spare beats go round-robin, then to the outro
+  let avail=nb-introB-outroB;let sum=()=>mids.reduce((a,c)=>a+c.nb,0);
+  while(sum()>avail&&mids.some(c=>c.nb>LEN[c.kind][0]))for(const c of mids)if(sum()>avail&&c.nb>LEN[c.kind][0])c.nb--;
+  while(sum()>avail&&mids.length){const d=mids.pop();warn.push(`dropped scene "${d.type}" (BGM too short)`)}
+  let spare=avail-sum(),guard=0;while(spare>0&&guard++<200){let any=false;for(const c of mids)if(spare>0&&c.nb<LEN[c.kind][1]){c.nb++;spare--;any=true}if(!any)break}
+  const OUTMAX=14;let outN=outroB+spare;if(outN>OUTMAX){warn.push(`storyboard ends ${outN-OUTMAX} beats before the BGM: film trimmed (add scenes to use the full track)`);outN=OUTMAX}
+  const list=[{kind:"intro",layout:intro,nb:introB,...IN},...mids,{kind:"outro",layout:outro,...OUT,nb:outN}];
+  {const used=introB+mids.reduce((a,c2)=>a+c2.nb,0)+outN;if(used<nb){TOTAL=Math.min(TOTAL,BEATS[used]+Math.round(T));BEATS=BEATS.filter(b=>b<TOTAL-2);GRID=GRID.filter(g=>g<TOTAL)}}
+  const byId=Object.fromEntries((M.people||[]).map(p=>[p.id,p]));const autoQ=[...(M.people||[])];let ai=0;
+  let bi=0;SCENES=[];list.forEach((c,i)=>{const id="S"+(i+1);const start=i==0?0:BEATS[bi];bi+=c.nb;const end=i==list.length-1?TOTAL-1:BEATS[bi]-1;
+    const s={id,kind:c.kind,layout:c.layout,place:c.place,start,end,beat0:bi-c.nb,nb:c.nb,slots:{},want:c.stickers||null};
+    if(i>0){const prevTV=list[i-1].layout=="tv";let t=prevTV?"cut":(c.transition||pick(r,P.transitions));const b=s.beat0;
+      if(t.startsWith("pan")){const d=t.split("-")[1]||pick(r,["left","right","up","down"]);s.enter={type:"pan",dir:d,steps:[BEATS[b],BEATS[b+1],BEATS[b+2]],stepFrac:d=="left"||d=="right"?0.24:0.18}}
+      else if(t.startsWith("tear"))s.enter={type:"tear",dir:t.split("-")[1]||pick(r,["left","right","up","down"]),steps:[BEATS[b],BEATS[b+1],BEATS[b+2]]};
       else if(t=="stamp")s.enter={type:"stamp",steps:[BEATS[b],BEATS[b+1]],rot:rr(r,-4,4)};
       else s.enter={type:"cut"}}
     s.land=s.enter&&s.enter.steps?s.enter.steps[s.enter.steps.length-1]:s.start;
-    if(c.kind=="intro"&&c.layout=="tv")s.intro={on:BEATS[0]?Math.min(3,BEATS[0]):3,flicker:GRID.filter(g=>g>4&&g<BEATS[2]).concat(BEATS.slice(0,2).map(b=>b+6)).sort((a,b)=>a-b),screenOn:BEATS[2],push:[BEATS[3],BEATS[4],BEATS[5]]};
-    if(c.person){const p=c.person;s.personRef=p;const modes=p.B?P.flash.filter(m=>m!="jump"):["jump"];s.person=pick(r,modes.length?modes:["jump"])}
-    if(s.kind=="intro"&&s.layout=="tv")s.person=null;   // the TV shows the next scene's people instead
+    if(c.kind=="intro"&&c.layout=="tv")s.intro={on:3,flicker:GRID.filter(g=>g>4&&g<BEATS[2]).concat(BEATS.slice(0,2).map(b=>b+6)).sort((a,b)=>a-b),screenOn:BEATS[2],push:[BEATS[3],BEATS[4],BEATS[5]]};
+    // people: explicit id, "auto" (round-robin, pairs first for place scenes) or null/absent on note scenes = nobody
+    let pr=null;if(c.kind!="note"&&!(c.kind=="intro"&&c.layout=="tv")){if(c.person&&c.person!="auto"){pr=byId[c.person];if(!pr)warn.push(`${id}: unknown person ${c.person}`)}else if(c.person!==null&&autoQ.length){const pairs=autoQ.filter(p=>p.B);pr=c.kind=="place"&&pairs.length?pairs[ai%pairs.length]:autoQ[ai%autoQ.length];ai++}}
+    if(pr){s.personRef=pr;let fl=c.flash||pick(r,pr.B?P.flash.filter(m=>m!="jump"):["jump"]);if(fl!="jump"&&!pr.B){warn.push(`${id}: flash ${fl} needs an A/B pair -> jump`);fl="jump"}s.person=fl}
+    // text: verbatim from the storyboard
+    if(c.kind=="place"||c.kind=="solo")s.slots.quote_en=fill(c.text||"");if(c.kind=="ransom")s.slots.headline=fill(c.text||"");
+    if(c.kind=="intro")s.slots.title=fill(c.title||c.text||"");if(c.kind=="outro"){s.slots.closing=fill(c.text||"");s.slots.lines=(c.lines||[]).map(fill);s.slots.tags=(c.tags||[]).map(fill);s.slots.stamp=fill(c.stamp||"THE END")}
+    if(c.kind=="note")s.slots.lines=(c.lines||[]).map(fill);if(c.kind=="list"){s.slots.title=fill(c.title||"");s.slots.items=(c.items||[]).map(fill)}
     SCENES.push(s)});
-  // beat-locked person events (exactly two positions, strictly alternating)
   for(const s of SCENES){if(!s.person)continue;const g=BEATS.filter(x=>x>=s.land+10&&x<=s.end-4);let ev;
     if(s.person=="ab")ev=g;else if(s.person=="stutter")ev=g.filter((x,i)=>i%5<3);else ev=g.filter((x,i)=>i%2==0);
     if(ev.length<2)ev=g.slice(0,Math.max(2,g.length));if(s.person=="jump")s.jumps=ev;else{s.ab=ev;s.flash=s.person;s.person="ab"}}
-  // copy (theme template + manifest overrides), no repeated quote in one film
-  COPY=Object.assign({},THEMES[M.theme||"vlog"],M.copy||{});const qr=seeded("copy");const quotes=[...COPY.quotes].sort(()=>qr()-0.5);let qi=0;
-  for(const s of SCENES){if(s.kind=="place"||s.kind=="solo")s.slots.quote_en=fill(quotes[qi++%quotes.length]);if(s.kind=="intro")s.slots.title=fill(pick(qr,COPY.title));if(s.kind=="ransom")s.slots.headline=fill(pick(qr,COPY.headline));
-    if(s.kind=="outro")s.slots.closing=fill(pick(qr,COPY.closing))}
-  // palettes: seeded, never the same twice in a row
-  P.scenes={};let last=-1;for(const s of SCENES){let k;do{k=Math.floor(r()*P.palettes.length)}while(k==last&&P.palettes.length>1);last=k;P.scenes[s.id]=P.palettes[k]}
-  // aliases so the shared person / photo code finds its keys
+  // palettes: palette_bias (hex list) ranks the pack's palettes by distance; seed picks among the closest, never the same twice in a row
+  let pool=P.palettes.map((p,k)=>k);if(SB.palette_bias&&SB.palette_bias.length){const d=k=>Math.min(...SB.palette_bias.map(h=>Math.min(hexDist(h,P.palettes[k][0]),hexDist(h,P.palettes[k][1]))));pool.sort((a,b)=>d(a)-d(b));pool=pool.slice(0,Math.max(2,Math.ceil(pool.length/2)))}
+  P.scenes={};let last=-1;for(const s of SCENES){let k;let g=0;do{k=pick(r,pool)}while(k==last&&pool.length>1&&g++<20);last=k;P.scenes[s.id]=P.palettes[k]}
   for(const s of SCENES){if(s.kind=="place"){const pl=M.places[s.place];BASE[s.id]={img:"PL"+s.place,subject:pl.subject,ground:pl.ground??0.93};s.slots.landscape_subject=pl.subject;s.slots.landscape_ground=pl.ground}
     if(s.personRef){const p=s.personRef;if(s.person=="ab"){IMG[s.id+"_A"]=IMG["PA_"+p.id];IMG[s.id+"_B"]=IMG["PB_"+p.id];SRC[s.id+"_A"]=p.src;SRC[s.id+"_B"]=p.srcB}else{IMG[s.id+"_person"]=IMG["PA_"+p.id];SRC[s.id+"_person"]=p.src}}}
-  PLAN={T,boilT:T*boilMult,boilMult,total:TOTAL,beats:BEATS.length,intro,outro,scenes:SCENES.map(s=>({id:s.id,kind:s.kind,layout:s.layout,start:s.start,land:s.land,end:s.end,beats:s.nb,enter:s.enter?s.enter.type+(s.enter.dir?"-"+s.enter.dir:""):"-",person:s.person?(s.flash||s.person):null,events:(s.ab||s.jumps||[]).length,palette:P.scenes[s.id]}))}}
+  PLAN={occasion:SB.occasion,mood:SB.mood,T,boilT:T*boilMult,boilMult,total:TOTAL,beats:BEATS.length,intro,outro,warnings:warn,scenes:SCENES.map(s=>({id:s.id,kind:s.kind,layout:s.layout,start:s.start,land:s.land,end:s.end,beats:s.nb,enter:s.enter?s.enter.type+(s.enter.dir?"-"+s.enter.dir:""):"-",person:s.person?(s.flash||s.person):null,personId:s.personRef?s.personRef.id:null,stickers:s.want,palette:P.scenes[s.id]}))}}
+// ---------- tagged element library (all procedural). The storyboard picks by name or tag; packs supply the random fill-ins ----------
+const ELEMENTS={
+ star:["star","night","win","sparkle","fun"],burst:["burst","pop","sale","wow","party","energy"],sparkle:["sparkle","shine","magic","new"],heart:["heart","love","romance","cute"],
+ flower:["flower","spring","garden","love","gentle"],smiley:["smiley","happy","funny","fun"],sun:["sun","summer","sunny","warm","day"],dots:["dots","pattern","retro"],
+ spiral:["spiral","dizzy","fun","chaos"],check:["check","done","ok","list"],asterisk:["asterisk","note","accent"],bolt:["bolt","energy","electric","fast"],crown:["crown","king","best","birthday"],
+ bubble:["bubble","talk","speech","funny"],tag:["tag","label","price","shop"],tape:["tape","craft","scrapbook"],washi:["washi","tape","craft","scrapbook","cute"],arrowSticker:["arrow","direction","go"],
+ balloon:["balloon","party","birthday","celebrate","float"],cake:["cake","birthday","party","sweet","anniversary"],ticket:["ticket","travel","trip","concert","movie","admit"],
+ ring:["ring","wedding","engagement","love","promise"],paw:["paw","cat","dog","pet","animal","cute"],umbrella:["umbrella","rain","rainy","weather","city"],raindrop:["raindrop","rain","rainy","water","sad","tear"],
+ cloud:["cloud","rain","sky","weather","dream","grey"],moon:["moon","night","quiet","dream","sleep"],camera:["camera","photo","travel","memory","vlog"],coffee:["coffee","cafe","cozy","morning","city"],
+ leaf:["leaf","nature","autumn","plant","calm"],gift:["gift","present","birthday","surprise","party"],note:["note","music","song","melody"],fish:["fish","cat","pet","sea","food"],
+ house:["house","home","cozy","family"],postage:["postage","stamp","mail","travel","letter"],cap:["cap","graduation","school","college","grad"],envelope:["envelope","letter","mail","invite"],
+ bone:["bone","dog","pet","funny"],plane:["plane","travel","trip","flight"],yarn:["yarn","cat","cozy","knit","pet"]};
+const DOODLES={arrow:["arrow","point","direction"],zigzag:["zigzag","energy","fun"],underline:["underline","emphasis"],circleMark:["circle","highlight","emphasis"],scribble:["scribble","messy","fun"],
+ rays:["rays","sun","shine","retro"],spray:["spray","graffiti","street"],crownMark:["crown","best","graffiti"],hearts:["hearts","love","cute"],rainlines:["rain","rainy","weather","melancholy"]};
+function resolveElement(q,r){q=String(q).toLowerCase();if(ELEMENTS[q])return {kind:q,doodle:false};if(DOODLES[q])return {kind:q,doodle:true};
+  const a=Object.keys(ELEMENTS).filter(k=>ELEMENTS[k].includes(q)),b=Object.keys(DOODLES).filter(k=>DOODLES[k].includes(q));if(a.length)return {kind:pick(r,a),doodle:false};if(b.length)return {kind:pick(r,b),doodle:true};return null}
 // ---------- procedural sticker + doodle library ----------
 function starPts(n,R,r0){const p=[];for(let i=0;i<n*2;i++){const a=-Math.PI/2+i*Math.PI/n;const q=i%2?r0:R;p.push([Math.cos(a)*q,Math.sin(a)*q])}return p}
 function stickerShape(ctx,k,s,r){const S=s;ctx.beginPath();
@@ -321,6 +339,27 @@ function stickerShape(ctx,k,s,r){const S=s;ctx.beginPath();
   else if(k=="tag"){ctx.moveTo(-S*0.62,-S*0.28);ctx.lineTo(S*0.40,-S*0.28);ctx.lineTo(S*0.64,0);ctx.lineTo(S*0.40,S*0.28);ctx.lineTo(-S*0.62,S*0.28)}
   else if(k=="tape"||k=="washi"){const pts=tornPts(-S*0.75,-S*0.17,S*1.5,S*0.34,"tp"+S,2);pts.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p))}
   else if(k=="arrowSticker"){[[-0.6,-0.14],[0.18,-0.14],[0.18,-0.36],[0.62,0],[0.18,0.36],[0.18,0.14],[-0.6,0.14]].forEach((p,i)=>i?ctx.lineTo(p[0]*S,p[1]*S):ctx.moveTo(p[0]*S,p[1]*S))}
+  else if(k=="balloon"){ctx.ellipse(0,-S*0.1,S*0.36,S*0.45,0,0,Math.PI*2);ctx.moveTo(-S*0.06,S*0.36);ctx.lineTo(S*0.06,S*0.36);ctx.lineTo(0,S*0.30)}
+  else if(k=="cake"){ctx.rect(-S*0.5,0,S*1.0,S*0.42);ctx.rect(-S*0.34,-S*0.28,S*0.68,S*0.30);ctx.rect(-S*0.04,-S*0.52,S*0.08,S*0.26)}
+  else if(k=="ticket"||k=="postage"){const w=S*(k=="ticket"?0.66:0.46),h=S*(k=="ticket"?0.34:0.56);ctx.moveTo(-w,-h);ctx.lineTo(w,-h);if(k=="ticket"){ctx.lineTo(w,-h*0.3);ctx.arc(w,0,h*0.3,-Math.PI/2,Math.PI/2,true);}ctx.lineTo(w,h);ctx.lineTo(-w,h);if(k=="ticket"){ctx.lineTo(-w,h*0.3);ctx.arc(-w,0,h*0.3,Math.PI/2,-Math.PI/2,true)}}
+  else if(k=="ring"){ctx.arc(0,S*0.1,S*0.38,0,Math.PI*2);ctx.moveTo(0,-S*0.6);ctx.lineTo(S*0.2,-S*0.36);ctx.lineTo(0,-S*0.2);ctx.lineTo(-S*0.2,-S*0.36)}
+  else if(k=="paw"){ctx.ellipse(0,S*0.14,S*0.28,S*0.24,0,0,Math.PI*2);for(const [x,y] of [[-0.34,-0.14],[-0.13,-0.38],[0.13,-0.38],[0.34,-0.14]]){ctx.moveTo(x*S+S*0.12,y*S);ctx.ellipse(x*S,y*S,S*0.12,S*0.15,0,0,Math.PI*2)}}
+  else if(k=="umbrella"){ctx.moveTo(-S*0.6,-S*0.02);ctx.quadraticCurveTo(-S*0.6,-S*0.6,0,-S*0.6);ctx.quadraticCurveTo(S*0.6,-S*0.6,S*0.6,-S*0.02);ctx.lineTo(S*0.04,-S*0.02);ctx.lineTo(S*0.04,S*0.42);ctx.quadraticCurveTo(S*0.04,S*0.6,-S*0.14,S*0.56);ctx.lineTo(-S*0.12,S*0.48);ctx.quadraticCurveTo(-S*0.04,S*0.5,-S*0.04,S*0.42);ctx.lineTo(-S*0.04,-S*0.02)}
+  else if(k=="raindrop"){ctx.moveTo(0,-S*0.58);ctx.bezierCurveTo(S*0.2,-S*0.25,S*0.38,0,S*0.38,S*0.18);ctx.arc(0,S*0.18,S*0.38,0,Math.PI);ctx.bezierCurveTo(-S*0.38,0,-S*0.2,-S*0.25,0,-S*0.58)}
+  else if(k=="cloud"){for(const [x,y,q] of [[-0.3,0.08,0.24],[0,-0.1,0.32],[0.3,0.06,0.26]]){ctx.moveTo(x*S+q*S,y*S);ctx.arc(x*S,y*S,q*S,0,Math.PI*2)}ctx.rect(-S*0.5,S*0.05,S*1.0,S*0.24)}
+  else if(k=="moon"){ctx.arc(0,0,S*0.48,0.9,Math.PI*2-0.9,false);ctx.arc(S*0.26,0,S*0.38,Math.PI*2-1.25,1.25,true)}
+  else if(k=="camera"){ctx.rect(-S*0.6,-S*0.28,S*1.2,S*0.66);ctx.rect(-S*0.22,-S*0.42,S*0.44,S*0.16)}
+  else if(k=="coffee"){ctx.moveTo(-S*0.38,-S*0.3);ctx.lineTo(S*0.38,-S*0.3);ctx.lineTo(S*0.30,S*0.5);ctx.lineTo(-S*0.30,S*0.5);ctx.closePath();ctx.moveTo(S*0.36,-S*0.1);ctx.arc(S*0.40,S*0.06,S*0.17,-Math.PI/2,Math.PI/2)}
+  else if(k=="leaf"){ctx.moveTo(0,-S*0.6);ctx.quadraticCurveTo(S*0.55,-S*0.1,0,S*0.5);ctx.quadraticCurveTo(-S*0.55,-S*0.1,0,-S*0.6)}
+  else if(k=="gift"){ctx.rect(-S*0.46,-S*0.18,S*0.92,S*0.64);ctx.rect(-S*0.52,-S*0.36,S*1.04,S*0.2);ctx.moveTo(0,-S*0.36);ctx.ellipse(-S*0.16,-S*0.46,S*0.16,S*0.1,0,0,Math.PI*2);ctx.moveTo(S*0.32,-S*0.46);ctx.ellipse(S*0.16,-S*0.46,S*0.16,S*0.1,0,0,Math.PI*2)}
+  else if(k=="note"){ctx.ellipse(-S*0.2,S*0.34,S*0.2,S*0.15,-0.4,0,Math.PI*2);ctx.rect(-S*0.04,-S*0.5,S*0.1,S*0.84);ctx.moveTo(S*0.06,-S*0.5);ctx.quadraticCurveTo(S*0.45,-S*0.35,S*0.36,-S*0.05);ctx.lineTo(S*0.06,-S*0.25)}
+  else if(k=="fish"){ctx.ellipse(-S*0.08,0,S*0.42,S*0.26,0,0,Math.PI*2);ctx.moveTo(S*0.28,0);ctx.lineTo(S*0.6,-S*0.26);ctx.lineTo(S*0.6,S*0.26)}
+  else if(k=="house"){ctx.moveTo(-S*0.56,-S*0.02);ctx.lineTo(0,-S*0.56);ctx.lineTo(S*0.56,-S*0.02);ctx.lineTo(S*0.42,-S*0.02);ctx.lineTo(S*0.42,S*0.5);ctx.lineTo(-S*0.42,S*0.5);ctx.lineTo(-S*0.42,-S*0.02)}
+  else if(k=="cap"){ctx.moveTo(0,-S*0.46);ctx.lineTo(S*0.66,-S*0.18);ctx.lineTo(0,S*0.1);ctx.lineTo(-S*0.66,-S*0.18);ctx.closePath();ctx.moveTo(-S*0.34,-S*0.02);ctx.lineTo(-S*0.34,S*0.3);ctx.quadraticCurveTo(0,S*0.48,S*0.34,S*0.3);ctx.lineTo(S*0.34,-S*0.02)}
+  else if(k=="envelope"){ctx.rect(-S*0.6,-S*0.38,S*1.2,S*0.76)}
+  else if(k=="bone"){for(const x of [-0.42,0.42])for(const y of [-0.12,0.12]){ctx.moveTo(x*S+S*0.15,y*S);ctx.arc(x*S,y*S,S*0.15,0,Math.PI*2)}ctx.rect(-S*0.42,-S*0.12,S*0.84,S*0.24)}
+  else if(k=="plane"){[[0.62,0],[-0.1,-0.12],[-0.3,-0.55],[-0.44,-0.55],[-0.3,-0.1],[-0.55,-0.08],[-0.62,-0.26],[-0.7,-0.26],[-0.64,0],[-0.7,0.26],[-0.62,0.26],[-0.55,0.08],[-0.3,0.1],[-0.44,0.55],[-0.3,0.55],[-0.1,0.12]].forEach((p,i)=>i?ctx.lineTo(p[0]*S,p[1]*S):ctx.moveTo(p[0]*S,p[1]*S))}
+  else if(k=="yarn"){ctx.arc(0,0,S*0.44,0,Math.PI*2);ctx.moveTo(S*0.3,S*0.32);ctx.quadraticCurveTo(S*0.6,S*0.6,S*0.2,S*0.62);ctx.lineTo(S*0.22,S*0.56);ctx.quadraticCurveTo(S*0.5,S*0.52,S*0.26,S*0.36)}
   else ctx.arc(0,0,S*0.48,0,Math.PI*2);ctx.closePath()}
 function stickerBox(d){const s=d.s*(d.kind=="tape"||d.kind=="washi"?1.6:1.35)+40;return {x0:d.x-s/2,y0:d.y-s/2,x1:d.x+s/2,y1:d.y+s/2}}
 function drawSticker(ctx,d){ctx.save();ctx.translate(d.x,d.y);ctx.rotate(d.rot);const S=d.s;
@@ -337,6 +376,22 @@ function drawSticker(ctx,d){ctx.save();ctx.translate(d.x,d.y);ctx.rotate(d.rot);
   if(d.kind=="check"){ctx.beginPath();ctx.moveTo(-S*0.22,0);ctx.lineTo(-S*0.05,S*0.18);ctx.lineTo(S*0.25,-S*0.2);ctx.stroke()}
   if(d.kind=="asterisk"){for(let i=0;i<3;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(Math.cos(a)*S*0.3,Math.sin(a)*S*0.3);ctx.lineTo(-Math.cos(a)*S*0.3,-Math.sin(a)*S*0.3);ctx.stroke()}}
   if(d.kind=="flower"){ctx.beginPath();ctx.arc(0,0,S*0.12,0,7);ctx.fill()}
+  const L2=(x0,y0,x1,y1)=>{ctx.beginPath();ctx.moveTo(x0*S,y0*S);ctx.lineTo(x1*S,y1*S);ctx.stroke()};
+  if(d.kind=="balloon"){ctx.beginPath();ctx.moveTo(0,S*0.36);ctx.quadraticCurveTo(S*0.12,S*0.5,-S*0.02,S*0.62);ctx.stroke();ctx.globalAlpha=0.35;ctx.fillStyle=P.light;ctx.beginPath();ctx.ellipse(-S*0.14,-S*0.28,S*0.06,S*0.12,0.4,0,7);ctx.fill();ctx.globalAlpha=1}
+  if(d.kind=="cake"){ctx.fillStyle=d.c2;ctx.fillRect(-S*0.5,S*0.12,S,S*0.06);ctx.fillStyle="#FFB000";ctx.beginPath();ctx.ellipse(0,-S*0.6,S*0.05,S*0.09,0,0,7);ctx.fill()}
+  if(d.kind=="ticket"){ctx.setLineDash([S*0.05,S*0.05]);L2(0.3,-0.3,0.3,0.3);ctx.setLineDash([]);d.label=d.label||"ADMIT 1"}
+  if(d.kind=="postage"){ctx.strokeRect(-S*0.34,-S*0.44,S*0.68,S*0.88);ctx.beginPath();ctx.arc(0,-S*0.05,S*0.16,0,7);ctx.fill()}
+  if(d.kind=="ring"){ctx.fillStyle=mix(d.c1,P.light,0.6);ctx.beginPath();ctx.arc(0,S*0.1,S*0.26,0,7);ctx.fill();ctx.fillStyle=d.c2}
+  if(d.kind=="umbrella"){L2(-0.3,-0.04,-0.12,-0.56);L2(0.3,-0.04,0.12,-0.56)}
+  if(d.kind=="camera"){ctx.beginPath();ctx.arc(0,S*0.05,S*0.2,0,7);ctx.stroke();ctx.beginPath();ctx.arc(S*0.4,-S*0.14,S*0.05,0,7);ctx.fill()}
+  if(d.kind=="coffee"){ctx.beginPath();ctx.moveTo(-S*0.1,-S*0.42);ctx.quadraticCurveTo(-S*0.2,-S*0.54,-S*0.08,-S*0.64);ctx.moveTo(S*0.1,-S*0.42);ctx.quadraticCurveTo(0,-S*0.54,S*0.12,-S*0.64);ctx.stroke()}
+  if(d.kind=="leaf"){L2(0,-0.5,0,0.45);L2(0,-0.1,0.18,-0.25);L2(0,0.1,-0.18,-0.05)}
+  if(d.kind=="gift"){ctx.fillRect(-S*0.06,-S*0.36,S*0.12,S*0.82)}
+  if(d.kind=="fish"){ctx.beginPath();ctx.arc(-S*0.28,-S*0.05,S*0.045,0,7);ctx.fill()}
+  if(d.kind=="house"){ctx.fillRect(-S*0.1,S*0.18,S*0.2,S*0.32)}
+  if(d.kind=="envelope"){ctx.beginPath();ctx.moveTo(-S*0.6,-S*0.38);ctx.lineTo(0,S*0.06);ctx.lineTo(S*0.6,-S*0.38);ctx.stroke()}
+  if(d.kind=="yarn"){for(let i=-2;i<=2;i++){ctx.beginPath();ctx.ellipse(0,0,S*0.44,S*0.12*Math.abs(i)+S*0.04,0.6,0,Math.PI);ctx.stroke()}}
+  if(d.kind=="cloud"||d.kind=="moon"||d.kind=="raindrop"){ctx.globalAlpha=0.35;ctx.fillStyle=P.light;ctx.beginPath();ctx.arc(-S*0.12,-S*0.05,S*0.07,0,7);ctx.fill();ctx.globalAlpha=1}
   if(d.label){ctx.font=`${Math.round(S*0.30)}px "${d.font}"`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=d.c2;ctx.fillText(d.label,d.kind=="tag"?-S*0.05:0,-S*0.04);useFont(d.font,d.label)}
   const b=S*(d.kind=="tape"||d.kind=="washi"?0.8:0.66);reg(ctx,"doodle",d.id,-b,-b,2*b,2*b);ctx.restore()}
 function drawDoodleStroke(ctx,d){const S=d.s;ctx.strokeStyle=d.c1;ctx.fillStyle=d.c1;ctx.lineWidth=d.w||7;ctx.lineCap="round";ctx.lineJoin="round";const r=seeded("dd|"+d.id);
@@ -345,13 +400,17 @@ function drawDoodleStroke(ctx,d){const S=d.s;ctx.strokeStyle=d.c1;ctx.fillStyle=
   else if(d.kind=="circleMark"||d.kind=="scribble"){ctx.beginPath();for(let i=0;i<=90;i++){const t=i/90*Math.PI*2*(d.kind=="scribble"?2.6:1.15);const q=S*(0.48+0.05*Math.sin(t*3));i?ctx.lineTo(Math.cos(t)*q*1.15,Math.sin(t)*q*0.7):ctx.moveTo(Math.cos(t)*q*1.15,Math.sin(t)*q*0.7)}ctx.stroke()}
   else if(d.kind=="rays"){for(let i=0;i<9;i++){const a=-Math.PI*0.9+i*Math.PI*0.1;ctx.beginPath();ctx.moveTo(Math.cos(a)*S*0.2,Math.sin(a)*S*0.2+S*0.3);ctx.lineTo(Math.cos(a)*S*0.6,Math.sin(a)*S*0.6+S*0.3);ctx.stroke()}}
   else if(d.kind=="spray"){for(let i=0;i<260;i++){const a=r()*7,q=Math.pow(r(),1.6)*S*0.6;ctx.globalAlpha=0.5;ctx.beginPath();ctx.arc(Math.cos(a)*q,Math.sin(a)*q*0.6,1+r()*2.5,0,7);ctx.fill()}ctx.globalAlpha=1}
+  else if(d.kind=="rainlines"){for(let i=0;i<9;i++){const x=(r()-0.5)*S*1.2,y=(r()-0.5)*S*1.0;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-S*0.08,y+S*0.26);ctx.stroke()}}
   else if(d.kind=="crownMark"){ctx.beginPath();[[-0.5,0.25],[-0.5,-0.2],[-0.25,0.05],[0,-0.35],[0.25,0.05],[0.5,-0.2],[0.5,0.25]].forEach((p,i)=>i?ctx.lineTo(p[0]*S,p[1]*S):ctx.moveTo(p[0]*S,p[1]*S));ctx.closePath();ctx.stroke()}
   else if(d.kind=="hearts"){for(const [dx,dy,k] of [[0,0,1],[S*0.45,S*0.35,.6]]){ctx.save();ctx.translate(dx-S*0.2,dy-S*0.15);wobblyPath(ctx,shapePts("heart",0,0,S*0.3*k,S*0.3*k,d.id+dx,1));ctx.fill();ctx.restore()}}
   const b=S*0.72;reg(ctx,"doodle",d.id,-b,-b,2*b,2*b)}
-function makeStickers(sid,L,r,n){const pal=P.scenes[sid];for(let i=0;i<n;i++){const dood=r()<0.4;const kind=dood?pick(r,P.doodles):pick(r,P.stickers);
+function makeStickers(sid,L,r,n,want){const pal=P.scenes[sid];const picks=[];
+  if(want&&want.length)for(const q of want){const e=resolveElement(q,r);if(e)picks.push(e)}   // storyboard choice (by name or tag)
+  else for(let i=0;i<n;i++){const dood=r()<0.4;picks.push({kind:dood?pick(r,P.doodles):pick(r,P.stickers),doodle:dood})}
+  picks.forEach((e,i)=>{const dood=e.doodle,kind=e.kind;
   const c1=dood?pick(r,[P.ink,pal[1],mix(pal[1],P.ink,0.35)]):pick(r,[pal[1],mix(pal[1],"#FFFFFF",0.35),P.light,mix(pal[0],P.ink,0.15)]);let c2=lum(c1)>0.4?P.ink:P.light;
-  const label=(kind=="tag"||kind=="bubble")?pick(r,["wow!","yay","♥","no.1","hi!","ok!","go!","lol"]):null;
-  L.stickers.push({id:sid+"st"+i,kind,doodle:dood,x:0,y:0,s:rr(r,120,200)*(dood?1.1:1),rot:rr(r,-0.35,0.35)*LV.tilt,c1,c2,label:label=="♥"?"<3":label,font:pick(r,P.en),w:dood?rr(r,6,10):0})}}
+  const label=(kind=="tag"||kind=="bubble")?pick(r,["wow!","yay","no.1","hi!","ok!","go!","lol"]):null;
+  L.stickers.push({id:sid+"st"+i,kind,doodle:dood,x:0,y:0,s:rr(r,120,200)*(dood?1.1:1),rot:rr(r,-0.35,0.35)*LV.tilt,c1,c2,label,font:pick(r,P.en),w:dood?rr(r,6,10):0})})}
 // ---------- text blocks ----------
 function fitSize(c,lines,font,sz,maxW){for(const l of lines){c.font=`${sz}px "${font}"`;const w=c.measureText(l).width;if(w>maxW)sz=Math.floor(sz*maxW/w)}return sz}
 function ransomLines(text){if(text.includes("\n"))return text.split("\n").map(s=>s.trim()).filter(Boolean);const ws=text.trim().split(/\s+/);if(ws.length==1)return ws;
@@ -385,22 +444,22 @@ function makeLayout(sid,attempt){const r=seeded(sid+"|layout|"+attempt);const sc
   if(sc.kind=="place"){const p=landmarkPiece(sid,r);L.pieces.push(p);L.feet=p.y+p.h*p.ground;scriptFor(sid,L,r,BANDS.place,slot(sid,"quote_en"))}
   if(sc.kind=="solo")scriptFor(sid,L,r,BANDS.solo,slot(sid,"quote_en"));
   if(sc.kind=="ransom"){L.ransom=buildRansomFor(sid,slot(sid,"headline"),rr(r,110,200));L.pcap=Math.min(L.pcap,0.86)}
-  if(sc.kind=="note"){const lines=COPY.note_zh.map(fill);const c=document.createElement("canvas").getContext("2d");const cw=rr(r,820,940),x=(W-cw)/2;const lh=1.75;let sz=fitSize(c,lines,P.zh,74,cw-130);const ch=Math.min(H-260,sz*lh*lines.length+300);
+  if(sc.kind=="note"){const lines=slot(sid,"lines");const c=document.createElement("canvas").getContext("2d");const cw=rr(r,820,940),x=(W-cw)/2;const lh=1.75;let sz=fitSize(c,lines,P.zh,74,cw-130);const ch=Math.min(H-260,sz*lh*lines.length+300);
     L.card={id:sid+"card",x,y:rr(r,140,Math.max(150,H-ch-160)),w:cw,h:ch,rot:rr(r,-1.6,1.6)*LV.tilt,color:pal[2],tex:P.tex=="crumpled"?"kraft":null};L.noteLines=lines;L.noteSize=sz;L.lh=lh}
-  if(sc.kind=="list"){const c=document.createElement("canvas").getContext("2d");const items=COPY.list.map(fill);const cw=rr(r,680,780);const sz=fitSize(c,items,P.zh,62,cw-90);
+  if(sc.kind=="list"){const c=document.createElement("canvas").getContext("2d");const items=slot(sid,"items");const cw=rr(r,680,780);const sz=fitSize(c,items,P.zh,62,cw-90);
     L.card={id:sid+"card",x:r()<0.5?60:W-60-cw,y:rr(r,110,170),w:cw,h:250+items.length*sz*1.55,rot:rr(r,-2.5,2.5)*LV.tilt,color:pal[2]};L.items=items;L.itemSize=sz;L.pcap=Math.min(L.pcap,0.82)}
   if(sc.kind=="intro"){const t=slot(sid,"title");const font=pick(r,P.en);const k=FONTK[font];const c=document.createElement("canvas").getContext("2d");
     if(sc.layout=="tv"){L.title=titleBlock(c,t,font,k,120);L.names={size:110,y:1740}}
-    else if(sc.layout=="ransom"){L.ransom=buildRansomFor(sid,t,rr(r,110,180));L.sub=fill(COPY.title[0])==t?null:null}
+    else if(sc.layout=="ransom"){L.ransom=buildRansomFor(sid,t,rr(r,110,180));L.sub=null}
     else if(sc.layout=="badge"){const R=rr(r,330,380);L.badge={id:sid+"badgecard",cx:W/2+rr(r,-40,40),cy:R+rr(r,90,150),R,color:pal[2],rot:rr(r,-6,6)};L.title=titleBlock(c,t,font,k,L.badge.cy-R*0.35,R*1.6);L.pcap=Math.min(L.pcap,0.8)}
     else if(sc.layout=="polaroid"){const pl=M.places.length?Math.floor(r()*M.places.length):-1;const pw=rr(r,600,680);L.polaroid={id:sid+"polcard",x:(W-pw)/2+rr(r,-50,50),y:rr(r,330,420),w:pw,h:pw*1.18,rot:rr(r,-6,6)*LV.tilt,img:pl>=0?"PL"+pl:null};L.title=titleBlock(c,t,font,k,110);L.pcap=Math.min(L.pcap,0.78)}}
   if(sc.kind=="outro"){const font=pick(r,P.en);const k=FONTK[font];const c=document.createElement("canvas").getContext("2d");const t=slot(sid,"closing");
-    if(sc.layout=="card"){const cw=rr(r,900,1000);L.card={id:sid+"card",x:(W-cw)/2,y:rr(r,50,90),w:cw,h:660,rot:rr(r,-1.2,1.2),color:pal[2]};L.closing=titleBlock(c,t,font,k,L.card.y+470,cw-120,96);L.tags=COPY.tags.map(fill).filter(Boolean)}
+    if(sc.layout=="card"){const cw=rr(r,900,1000);L.card={id:sid+"card",x:(W-cw)/2,y:rr(r,50,90),w:cw,h:660,rot:rr(r,-1.2,1.2),color:pal[2]};L.closing=titleBlock(c,t,font,k,L.card.y+470,cw-120,96);L.tags=slot(sid,"tags").filter(Boolean)}
     else if(sc.layout=="wall"){L.closing=titleBlock(c,t,font,k,rr(r,180,260),W-140,150)}
-    else if(sc.layout=="stamp"){const R=rr(r,230,280);L.stamp={id:sid+"stampcard",cx:rr(r,R+60,W-R-60),cy:R+rr(r,90,140),R,rot:rr(r,-14,14),text:fill(COPY.end)};L.closing=titleBlock(c,t,font,k,L.stamp.cy+R+150,W-140,120);L.pcap=Math.min(L.pcap,0.78)}
+    else if(sc.layout=="stamp"){const R=rr(r,230,280);L.stamp={id:sid+"stampcard",cx:rr(r,R+60,W-R-60),cy:R+rr(r,90,140),R,rot:rr(r,-14,14),text:slot(sid,"stamp")};L.closing=titleBlock(c,t,font,k,L.stamp.cy+R+150,W-140,120);L.pcap=Math.min(L.pcap,0.78)}
     else if(sc.layout=="filmstrip"){const pls=M.places.map((_,i)=>"PL"+i).slice(0,3);L.strip={id:sid+"stripcard",y:rr(r,90,140),h:400,rot:rr(r,-3,3),imgs:pls};L.closing=titleBlock(c,t,font,k,L.strip.y+560,W-140,120);L.pcap=Math.min(L.pcap,0.8)}}
   if(sc.person&&!placePeople(sid,L,r))L.peopleFail=true;
-  const dens=P.density;let n=Math.round(rr(r,dens[0],dens[1]+0.99))+(sc.layout=="wall"?3:0);if(sc.kind=="note")n=Math.min(n,2);makeStickers(sid,L,r,n);
+  const dens=P.density;let n=Math.round(rr(r,dens[0],dens[1]+0.99))+(sc.layout=="wall"?3:0);if(sc.kind=="note")n=Math.min(n,2);makeStickers(sid,L,r,n,sc.want);
   L.rand=r;return L}
 function titleBlock(c,t,font,k,y,maxW=W-2*MARGIN-80,sz0=150){let sz=Math.round(sz0*k.k);let lines=wrapLines(c,[t],font,sz,maxW);if(lines.length==1&&t.includes(" ")&&t.length>14){const w=t.split(" ");const h=Math.ceil(w.length/2);lines=[w.slice(0,h).join(" "),w.slice(h).join(" ")]}
   sz=fitSize(c,lines,font,sz,maxW);return {font,lines,lh:k.lh,size:sz,y:y+sz*0.8}}
@@ -410,7 +469,7 @@ function cardDraw(ctx,c,sid,boil){piece(ctx,{id:c.id,x:c.x,y:c.y,w:c.w,h:c.h,rot
 const KIND={
  note:(ctx,L,sid,b)=>{cardDraw(ctx,L.card,sid,b);const c=L.card;ctx.save();ctx.translate(c.x+c.w/2,c.y+c.h/2);ctx.rotate(c.rot*Math.PI/180);const h0=-c.h/2+150;
    L.noteLines.forEach((l,i)=>textAt(ctx,l,P.zh,L.noteSize,0,h0+i*L.noteSize*L.lh,0,P.penInk,"center",sid+"n"+i));ctx.restore()},
- list:(ctx,L,sid,b)=>{cardDraw(ctx,L.card,sid,b);const c=L.card;ctx.save();ctx.translate(c.x+c.w/2,c.y);ctx.rotate(c.rot*Math.PI/180);textAt(ctx,fill(COPY.list_title),P.zh,100,0,170,0,P.penInk,"center",sid+"lt");
+ list:(ctx,L,sid,b)=>{cardDraw(ctx,L.card,sid,b);const c=L.card;ctx.save();ctx.translate(c.x+c.w/2,c.y);ctx.rotate(c.rot*Math.PI/180);textAt(ctx,slot(sid,"title"),P.zh,100,0,170,0,P.penInk,"center",sid+"lt");
    L.items.forEach((l,i)=>textAt(ctx,l,P.zh,L.itemSize,0,300+i*L.itemSize*1.55,0,P.penInk,"center",sid+"li"+i));ctx.restore()},
  ransom:(ctx,L,sid,b)=>ransom(ctx,L.ransom),
  intro:(ctx,L,sid,b)=>{const s=SCENES.find(x=>x.id==sid);const pal=P.scenes[sid];
@@ -422,7 +481,7 @@ const KIND={
    if(L.layout=="tv")drawTitle(ctx,L.title,sid,P.ink)},
  outro:(ctx,L,sid,b)=>{const pal=P.scenes[sid];
    if(L.layout=="card"){cardDraw(ctx,L.card,sid,b);const c=L.card;const info=M.info||{};let y=c.y+150;
-     for(const [k,v] of [["日期",info.date],["地点",info.place]])if(v){textAt(ctx,k+"："+fill(v),P.zh,MIN_CJK+12,c.x+90,y,0,P.penInk,"left",sid+"i"+k);y+=96}
+     slot(sid,"lines").slice(0,3).forEach((v,k)=>{textAt(ctx,v,P.zh,MIN_CJK+12,c.x+90,y,0,P.penInk,"left",sid+"i"+k);y+=96});
      drawTitle(ctx,L.closing,sid,P.ink);L.tags.slice(0,2).forEach((t,i)=>nameTag(ctx,t,i?810:270,c.y+c.h+150+(i?6:0),i?3:-4,sid+"tag"+i))}
    if(L.layout=="wall")drawTitle(ctx,L.closing,sid,P.ink);
    if(L.layout=="stamp"){const S=L.stamp;ctx.save();ctx.translate(S.cx,S.cy);ctx.rotate(S.rot*Math.PI/180);const col=mix(pal[1],P.ink,0.25);const pts=shapePts("circle",0,0,S.R,S.R,S.id,1.5);ctx.fillStyle=mix(pal[2],P.light,0.3);wobblyPath(ctx,pts);ctx.fill();
@@ -466,7 +525,10 @@ function render(ctx,f){ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);cons
   else if(sceneSettled(s,f))drawScene(ctx,s.id,f);
   else{const i=SCENES.indexOf(s),prev=SCENES[i-1];const n=stepsDone(s,f);const E=s.enter;const pf=isTV(prev)?prev.end:prev.end;
     if(E.type=="pan"){const d=E.dir;const horiz=(d=="left"||d=="right");const size=horiz?W:H;const off=(3-n)*E.stepFrac*size;const sign=(d=="left"||d=="up")?1:-1;const nv=sign*off,pv=nv-sign*size;
-      const draw=(id,v,ff)=>{ctx.save();horiz?ctx.translate(v,0):ctx.translate(0,v);drawScene(ctx,id,ff);ctx.restore()};draw(prev.id,pv,pf);draw(s.id,nv,s.land)}
+      const draw=(id,v,ff,np)=>{ctx.save();horiz?ctx.translate(v,0):ctx.translate(0,v);drawScene(ctx,id,ff,np);ctx.restore()};
+      // P0-7: both pages first, then both people on top (a bottom-cut person of the outgoing page may overhang into the incoming page)
+      const tvp=isTV(prev);draw(prev.id,pv,pf,!tvp);draw(s.id,nv,s.land,true);
+      for(const [sc,v,ff] of [[prev,pv,pf],[s,nv,s.land]])if(sc.person&&!isTV(sc)){ctx.save();horiz?ctx.translate(v,0):ctx.translate(0,v);drawPerson(ctx,sc,ff,boilOf(ff));ctx.restore()}}
     else if(E.type=="tear"){// paper tear: the new page is revealed through a torn edge advancing one third per beat; people only appear once it has landed (P0-7)
       drawScene(ctx,prev.id,pf,true);const t=n/3;const r=seeded(s.id+"|tear|"+n);const d=E.dir;let poly;
       if(d=="left"||d=="right"){const x=d=="left"?W*(1-t):W*t;const e=tornLine(x+rr(r,-60,60),-60,x+rr(r,-60,60),H+60,r,26);poly=d=="left"?[...e,[W+80,H+80],[W+80,-80]]:[...e,[-80,H+80],[-80,-80]]}
@@ -480,14 +542,14 @@ function stateKey(f){const s=sceneAt(f);const ps=personState(s,f);let k=[s.id,bo
 function buildLayouts(){const order=[...SCENES.filter(s=>!isTV(s)),...SCENES.filter(isTV)];for(const s of order){let L,errs,att;
   for(att=0;att<40;att++){L=makeLayout(s.id,att);LAYOUT[s.id]=L;errs=softChecks(s.id,L);
     if(!errs.length&&L.script){const cc=chooseScriptColor(s.id,L);L.script.color=cc.color;L.script.contrast=+cc.ratio.toFixed(2);if(cc.ratio<3.0)errs.push("contrast "+cc.ratio.toFixed(2))}
-    if(!errs.length)for(const d of [...L.stickers])if(!placeFree(s.id,L,d,stickerBox))L.stickers=L.stickers.filter(q=>q!=d);
+    if(!errs.length)for(const d of [...L.stickers]){let ok=false;for(const k of [1,0.8,0.62]){d.s*=k==1?1:k/(k==0.8?1:0.8);if(placeFree(s.id,L,d,stickerBox)){ok=true;break}}if(!ok)L.stickers=L.stickers.filter(q=>q!=d)}
     let vis=[];if(!errs.length)for(const f of sceneStates(s))for(let b=0;b<3;b++){const a=auditState(s.id,f,b);errs.push(...a.v);if(a.st.buildingVisible!=null)vis.push(a.st.buildingVisible)}
     if(!errs.length&&vis.length&&Math.max(...vis)<0.35)errs.push("building hidden behind people in both positions");
     if(!errs.length)break}
   for(const p of L.pieces)MASKUSE[p.mask]=(MASKUSE[p.mask]||0)+1;REROLLS[s.id]={attempts:att+1,lastErrors:[...new Set(errs)]};delete L.rand}}
 function auditState(sid,f,boil){const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");AUD=[];drawFor(x,sid,f,boil);const A=AUD;AUD=null;return auditList(A,true)}
 function softChecks(sid,L){const e=[];for(const p of L.pieces){if(p.cover<minCover(p.mask))e.push(`photo cover ${p.cover}<${minCover(p.mask)} (${p.mask})`);if(!p.subjectInside)e.push(`P0-3 subject outside ${p.mask} mask`)}if(L.peopleFail)e.push("P0-2/P0-1 cannot fit two positions");if(L.script&&L.script.size<MIN_SCRIPT*FONTK[L.script.font].k-0.5)e.push("script too small");return e}
-async function init(manifest,seed){M=manifest;SEED=seed;const st=M.style||{};P=JSON.parse(JSON.stringify(PACKS[st.pack||"scrapbook"]));P.zhBody=P.zhTitle=P.zh;LV=LEVELS[st.randomness||"medium"];
+async function init(manifest,seed){M=manifest;SEED=seed;const st=M.style||{};const SB=M.storyboard||(M.storyboard={scenes:[]});const pk=SB.pack||st.pack||"scrapbook";P=JSON.parse(JSON.stringify(PACKS[pk]));if(SB.palette_bias)P.palette_bias=SB.palette_bias;P.zhBody=P.zhTitle=P.zh;LV=LEVELS[st.randomness||"medium"];
   if(P.masks){MASKS.length=0;MASKS.push(...P.masks)}
   const files={crumpled:"../raw/tex/crumpled.jpg",kraft:"../raw/tex/kraft.png"};
   (M.places||[]).forEach((p,i)=>files["PL"+i]="../"+p.file);(M.people||[]).forEach(p=>{files["PA_"+p.id]="../"+p.A;if(p.B)files["PB_"+p.id]="../"+p.B});
@@ -497,7 +559,7 @@ async function init(manifest,seed){M=manifest;SEED=seed;const st=M.style||{};P=J
   TEX={crumpled:IMG.crumpled,newsprint:procTex("newsprint"),halftone:procTex("halftone"),concrete:procTex("concrete"),photocopy:procTex("photocopy")};
   for(let b=0;b<3;b++){const c=document.createElement("canvas");c.width=c.height=512;const x=c.getContext("2d");const im=x.createImageData(512,512);const r=mulberry32(77+b);for(let i=0;i<im.data.length;i+=4){const v=r()*255;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255}x.putImageData(im,0,0);NOISE.push(c)}
   await document.fonts.ready;makePlan();buildLayouts();
-  return {seed:SEED,preset:st.pack||"scrapbook",pack:st.pack||"scrapbook",theme:M.theme,randomness:st.randomness||"medium",plan:PLAN,rerolls:REROLLS,src:SRC,lands:Object.fromEntries(SCENES.map(s=>[s.id,s.land])),
+  return {seed:SEED,preset:pk,pack:pk,occasion:(M.storyboard||{}).occasion,mood:(M.storyboard||{}).mood,randomness:st.randomness||"medium",plan:PLAN,rerolls:REROLLS,src:SRC,lands:Object.fromEntries(SCENES.map(s=>[s.id,s.land])),
     layout:Object.fromEntries(Object.entries(LAYOUT).map(([k,v])=>[k,{kind:v.kind,layout:v.layout,sheets:v.sheets.map(b=>b.kind+" "+b.color),stickers:v.stickers.map(d=>d.kind),script:v.script?{font:v.script.font,size:v.script.size,lines:v.script.lines,color:v.script.color}:null,photo:v.pieces.map(p=>({mask:p.mask,cover:p.cover})),pos:v.pos}]))}}
 function personLayer(f){const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");const s=sceneAt(f);if(!s.person||!sceneSettled(s,f))return null;
   const L=LAYOUT[s.id];const st=personState(s,f);const g=personGeom(st.key,st.pos,L);const J=jit(s.id,boilOf(f));
