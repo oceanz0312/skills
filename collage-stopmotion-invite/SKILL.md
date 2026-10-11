@@ -117,3 +117,9 @@ seed 决定：色块撕法（对角/侧边/大圆弧）和位置、撕边轮廓�
 
 ## 字体文件（放在项目 `fonts/`，全部 OFL / Apache）
 ReenieBeanie.ttf、NothingYouCouldDo.ttf、HomemadeApple.ttf、Caveat.ttf（可变字重）、DancingScript.ttf（可变字重）、Kalam.ttf、MaShanZheng.ttf（来自 github.com/google/fonts）（v8 起所有中文默认字体）；可选覆盖：LongCang-Regular.ttf、LXGWWenKai-Regular.ttf **v1.522**（v1.330 那版的 TTF 是坏的）。
+
+## 真实案例
+
+用网上示例素材（非真人用户照片）跑出的 38 秒成片，点封面看视频：
+
+<a href="examples/demo_invite.mp4"><img src="examples/demo_invite.jpg" width="240" alt="demo"></a>

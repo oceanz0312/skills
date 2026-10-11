@@ -49,3 +49,16 @@ description: 风格蒸馏元 skill：把任意风格参考（视频、图片、�
 - 拆解器针对"定格 / 硬切 / 分拍"类剪辑调过阈值；连续运镜的片子 hold ratio 会很低，场景切分要靠拼图人工校。
 - librosa 版本不同 BPM 估计会差（抒情曲尤甚）；以"切点到拍距离"的结论为准，不以 BPM 数字为准。
 - 不解析 Figma/PSD/AI 原生文件，需要导出 PNG/PDF。字体只能按外观找替代。
+
+## 真实案例
+
+对一条拼贴定格请柬参考片做蒸馏的实际产出（参考片本身不收录）：
+
+- [examples/distill_analysis.md](examples/distill_analysis.md)：自动拆解报告（节拍网格 T、boil 3 态、10 个场景、A/B 换姿势、转场步数）
+- 提取的色板：
+
+<img src="examples/distill_palette.png" width="360" alt="palette">
+
+- 生成的新 skill 脚手架冒烟渲染（6 秒，色块占位，验证时间轴与 boil 定格）：
+
+<a href="examples/demo_scaffold.mp4"><img src="examples/demo_scaffold.jpg" width="180" alt="scaffold"></a>
