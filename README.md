@@ -31,6 +31,7 @@
 | [`collage-sticker-doodle`](collage-sticker-doodle/) | 通用贴纸涂鸦拼贴定格视频生成器（含锁定的婚礼请柬包 `invite-classic`） | 可用，**推荐** |
 | [`collage-stopmotion-invite`](collage-stopmotion-invite/) | 拼贴手账定格风婚礼请柬视频（v8） | 已被 `collage-sticker-doodle` 的 `invite-classic` 取代，保留备查 |
 | [`video-style-distill`](video-style-distill/) | 把任意风格参考蒸馏成一个新的视频生成 skill | 可用 |
+| [`mlh-cursor-pro-claim`](mlh-cursor-pro-claim/) | 报名 MLH Global Hack Week 并 check-in，领取免费 Cursor Pro 的 SOP | 可用 |
 
 视频类 skill 都用代码出片：HTML Canvas 逐帧绘制 + Playwright 截图 + FFmpeg 合成，Python 负责抠图、校验和 QA。
 
@@ -85,6 +86,14 @@
 - **要点**：
   - 测量脚本：切点、定格网格、boil 态数、A/B 闪、转场、对拍、色板、拼图；静态图可推导动效默认值。
   - 能力边界：拼贴、定格、动态排版、图形动画、扁平插画、卡点剪辑、MG 包装都能完整蒸馏。实拍运镜、复杂 3D 或特效、AI 生成画面只能蒸馏剪辑节奏和包装，动手前会先说明。
+
+---
+
+### mlh-cursor-pro-claim · 通过 MLH Global Hack Week 领免费 Cursor Pro
+
+- **做什么**：一步步带你报名 MLH Global Hack Week（如 Hacktoberfest）：登录 MyMLH → 填资料 → 同意条款 → 活动 check-in → 等邮件兑换码 → 在 Cursor Billing 里兑换。
+- **什么时候用**：看到 MLH 送 Cursor Pro 的推文 / 链接，想报名领取，或想知道兑换码在哪。
+- **要点**：不要求学生；码是事后邮件发的；同意条款由本人勾选，不编造个人信息；群聊里卡住就转 1:1 私聊。
 
 ---
 
