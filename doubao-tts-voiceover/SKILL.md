@@ -1,10 +1,6 @@
 ---
 name: doubao-tts-voiceover
-description: >-
-  Generate Chinese voiceover / TTS audio (plus optional SRT subtitles) for
-  self-media videos with the Volcengine Doubao TTS 2.0 (seed-tts-2.0) API. Use
-  when the user wants text turned into natural, expressive narration, wants to
-  tune voice tone/speed/pitch, or needs a script polished for spoken delivery.
+description: Generate Chinese voiceover / TTS audio (plus optional SRT subtitles) for self-media videos with the Volcengine Doubao TTS 2.0 (seed-tts-2.0) API. Use when the user wants text turned into natural, expressive narration, wants to tune voice tone/speed/pitch, or needs a script polished for spoken delivery.
 ---
 # 豆包语音合成 2.0 自媒体配音
 
