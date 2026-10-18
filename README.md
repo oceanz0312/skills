@@ -34,7 +34,7 @@
 | [`mlh-cursor-pro-claim`](mlh-cursor-pro-claim/) | 报名 MLH Global Hack Week 并 check-in，领取免费 Cursor Pro 的 SOP | 可用 |
 | [`doubao-tts-voiceover`](doubao-tts-voiceover/) | 用火山引擎豆包语音合成 2.0 生成自媒体配音（含 SRT 字幕、语气调参） | 可用 |
 | [`claude-cliproxy-vps`](claude-cliproxy-vps/) | 搭美国 VPS + CLIProxyAPI + 静态住宅代理，让 Claude Code 经代理用 Claude Pro 订阅（含省 token 设置） | 可用 |
-| [`notion-llm-wiki`](notion-llm-wiki/) | 按 Karpathy LLM Wiki 模式维护 Notion 知识库（Ingest / Query / Lint） | 可用 |
+| [`karpathy-llm-wiki`](karpathy-llm-wiki/) | Astro-Han 权威 Karpathy LLM Wiki skill（Ingest / Query / Lint；含 Shiper Notion 路径映射） | 可用 |
 
 视频类 skill 都用代码出片：HTML Canvas 逐帧绘制 + Playwright 截图 + FFmpeg 合成，Python 负责抠图、校验和 QA。
 
