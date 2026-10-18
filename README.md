@@ -40,6 +40,7 @@
 | [`doubao-tts-voiceover`](doubao-tts-voiceover/) | 用火山引擎豆包语音合成 2.0 生成自媒体配音（含 SRT 字幕、语气调参） | 可用 |
 | [`claude-cliproxy-vps`](claude-cliproxy-vps/) | 搭美国 VPS + CLIProxyAPI + 静态住宅代理，让 Claude Code 经代理用 Claude Pro 订阅（含省 token 设置） | 可用 |
 | [`karpathy-llm-wiki`](karpathy-llm-wiki/) | Astro-Han 权威 Karpathy LLM Wiki skill（Ingest / Query / Lint；含 Shiper Notion 路径映射） | 可用 |
+| [`cloudflare-workers-global-perf`](cloudflare-workers-global-perf/) | Cloudflare Workers（Next.js/OpenNext/D1）全球提速：Globalping 多地区拨测 → 静态缓存 / 查询合并 / 边缘缓存 / zone 配置 / D1 读副本，逐 PR 上线复测 | 可用 |
 
 视频类 skill 都用代码出片：HTML Canvas 逐帧绘制 + Playwright 截图 + FFmpeg 合成，Python 负责抠图、校验和 QA。
 
@@ -102,6 +103,12 @@
 - **做什么**：一步步带你报名 MLH Global Hack Week（如 Hacktoberfest）：登录 MyMLH → 填资料 → 同意条款 → 活动 check-in → 等邮件兑换码 → 在 Cursor Billing 里兑换。
 - **什么时候用**：看到 MLH 送 Cursor Pro 的推文 / 链接，想报名领取，或想知道兑换码在哪。
 - **要点**：不要求学生；码是事后邮件发的；同意条款由本人勾选，不编造个人信息；群聊里卡住就转 1:1 私聊。
+
+### cloudflare-workers-global-perf · Cloudflare Workers 全球提速
+
+- **做什么**：给跑在 Cloudflare Workers 上的站点（尤其 Next.js + OpenNext + D1）降全球 TTFB。先用 Globalping 在 ~40 个地点 × 3 轮拨测出各区域 p50/p90，再按 `_headers` 长缓存 → OpenNext 静态资源增量缓存 → D1 batch + React cache() → Cache API 边缘缓存 → 瘦身 → zone 配置 → D1 读副本 的顺序，一个 PR 一步，上线后复测、记回滚点。
+- **什么时候用**：网站在某些地区打开很慢、想做全球拨测、Workers/OpenNext/D1 提速。
+- **要点**：永不缓存清单（限额、session、个人接口）；可变字段只进短 TTL；Smart Placement 要 A/B 且不随 `wrangler rollback` 回滚；Early Hints 无 Link 头无效；冷实例双峰要冷/热各测一轮。配套拨测、分析、smoke 脚本。实战：全球首页 p50 432→68 ms。
 
 ---
 
