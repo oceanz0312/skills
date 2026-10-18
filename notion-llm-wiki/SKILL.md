@@ -8,77 +8,73 @@ description: >-
 
 # Notion LLM Wiki (Karpathy pattern)
 
-Maintain the Shiper Notion space as a persistent, compounding wiki. The LLM writes and maintains pages; the human curates sources and asks questions. Do not re-derive knowledge from scratch on every question — compile once, keep current.
+Maintain the Shiper Notion space as a persistent, compounding wiki. The LLM writes and maintains pages; the human curates sources and asks questions. Compile once, keep current — do not re-derive from scratch on every question.
 
 Canonical idea: [Karpathy llm-wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
 
-## Architecture (mapped to Notion)
+**In Notion, the live schema page is authoritative:** [知识库规则](<NOTION_PAGE_URL>). This skill implements Karpathy's Ingest / Query / Lint on top of that page. If this skill and 知识库规则 disagree on PARA placement or naming, follow 知识库规则 and then update this skill.
 
-| Layer | Notion home | Rules |
+## Architecture (mapped to existing Notion pages)
+
+| Layer | Notion home | Role |
 | --- | --- | --- |
-| **Raw** | `05 Raw 原始资料` | Immutable sources. Store the original URL, clip, PDF, or paste. Never rewrite a raw page to “clean it up” after ingest — only append metadata if needed. |
-| **Wiki** | `01 Projects` · `02 Areas` · `03 Resources` · `04 Decisions` · `99 归档` | Compiled knowledge. Entity pages, concept pages, summaries, comparisons. Cross-link heavily. |
-| **Index** | page `知识库索引` (under Shiper hub) | Content catalog: every wiki page with one-line summary + optional source count. Update on every ingest. |
-| **Log** | page `操作日志` | Append-only. Prefer `## [YYYY-MM-DD] ingest \| Title` (or `query` / `lint`). |
-| **Schema** | this skill | Conventions and workflows for future sessions. |
+| **Inbox** | Inbox (under Shiper hub) | Staging for any new source before filing |
+| **Raw** | `05 Raw 原始资料` | Immutable sources kept as-is after filing |
+| **Wiki** | `01 Projects` · `02 Areas` · `03 Resources` · `04 Decisions` · `99 归档` | Compiled knowledge pages |
+| **Index** | [索引](<NOTION_PAGE_URL>) | Content catalog; update on every ingest |
+| **Log** | [操作日志](<NOTION_PAGE_URL>) | Append-only history |
+| **Schema** | [知识库规则](<NOTION_PAGE_URL>) + this skill | Conventions |
 
-Hub: Shiper 知识库. Connector namespace for this space: `user-Notion--shipper` (adjust if the user’s active Notion account differs).
+Hub: Shiper 知识库. Prefer connector `user-Notion--shipper`.
 
-PARA placement: pick the shallowest fitting bucket, then the closest existing parent. Prefer a child page under an existing section over a new top-level page.
+PARA: one home per page; cross-link with page mentions, never copy. Prefer child under an existing section over a new top-level page.
 
 ## Operations
 
 ### Ingest
 
-1. **Capture raw.** Create or locate a page under `05 Raw` with the source as-is (URL, title, date captured, optional full text or attachment). Do not polish the raw body.
-2. **Triage with the user** when the ask is ambiguous (what to emphasize, which entities matter). Prefer one source at a time.
-3. **Compile into wiki.** Write or update:
-   - a summary / entity page in the right PARA section
-   - related concept or company pages touched by the same facts
-   - cross-links both ways where useful
-4. **Grounding.** Load-bearing facts (numbers, dates, quotes) must appear in the linked raw source. Prefer citing the raw page and the original URL on the wiki page.
-5. **Update index.** Add or refresh the row in `知识库索引` (link + one-line summary + date).
-6. **Append log.** One entry on `操作日志`: what was ingested, which pages were created/updated.
-7. **Report.** Give the user the wiki page link(s) and what changed — not a dump of the raw source.
+1. **Inbox first.** Put the new source into Inbox (URL, title, capture date, optional full text/attachment).
+2. **Keep a raw copy.** File the immutable source under `05 Raw` (or leave a clear raw child under the wiki topic if the schema page already defines that pattern). Do not polish raw after the fact.
+3. **Triage** with the user when emphasis is ambiguous. Prefer one source at a time.
+4. **Compile into wiki.** Create/update the entity or concept page in the correct PARA section; update related pages; add cross-links.
+5. **Grounding.** Numbers, dates, and quotes on wiki pages must appear in the linked raw/source.
+6. **Update [索引](<NOTION_PAGE_URL>).** Link + one-line summary + date.
+7. **Append [操作日志](<NOTION_PAGE_URL>).** Prefer `## [YYYY-MM-DD] ingest | Title` listing pages created/updated.
+8. **Clear Inbox** for that item once filed.
+9. **Report** wiki page links and what changed.
 
-A single source may touch many pages. Do not stop after creating only one leaf page if entity or concept pages need updates.
+One source may touch many wiki pages — do not stop after a single leaf page if related entities need updates.
 
 ### Query
 
-1. Read `知识库索引` first (or search Notion) to find candidate pages.
-2. Fetch those pages; answer with citations (Notion page links).
-3. If the answer is durable (comparison, synthesis, decision), **file it back** as a new wiki page, update the index, and log the query — explorations should compound.
+1. Read 索引 (or Notion search) to find candidates.
+2. Fetch pages; answer with Notion citations.
+3. Durable answers (comparisons, synthesis, decisions) get filed back as wiki pages; update 索引 and 操作日志.
 
-### Lint (periodic health check)
+### Lint
 
-Look for and report (auto-fix only the safe structural ones):
+Periodically health-check:
 
-- contradictions between pages
-- stale claims superseded by newer sources
-- orphan pages (no inbound links / not in index)
-- important concepts mentioned but lacking a page
-- missing cross-references
-- broken Notion mentions or dead external links you can verify
-- raw pages never compiled, or wiki claims with no raw backing
+- contradictions; stale claims; orphans / missing from 索引
+- concepts mentioned but lacking a page; missing cross-links
+- raw never compiled; wiki claims with no raw backing
+- broken links you can verify
 
-Ask before large reorganizations or deletions.
+Auto-fix only safe structural index/link drift. Ask before large moves or deletes.
 
-## Page conventions
+## Conventions (current space)
 
-- Lead with a short purpose blurb or one-line summary when useful.
-- Prefer targeted Notion `update_content` edits over full-page `replace_content`.
-- Use native Notion page mentions for internal links when the tool supports them; otherwise use the page URL.
-- Company research under `03 Resources / 软件&SaaS公司调研` (one child page per company) unless the user places it elsewhere.
-- Design language / style references under `03 Resources / 设计语言 Design Language`.
-- Personal follow-reasons and content reflection under `01 Projects / AI 自媒体 / 自媒体感悟：我为什么关注 TA` (split by platform).
+- Company research → `03 Resources / 软件&SaaS公司调研` (one child per company)
+- Design language → `03 Resources / 设计语言 Design Language`
+- Follow-reasons / content reflection → `01 Projects / AI 自媒体 / 自媒体感悟：我为什么关注 TA`
+- Prefer targeted `update_content` over full-page replace
+- Do not delete content; move to `99 归档` when retired
+- `04 Decisions` only after human confirmation
 
 ## Anti-patterns
 
-- Dropping a polished page into Resources and skipping Raw, Index, and Log.
-- Rewriting history inside a raw page.
-- Answering from chat memory without reading wiki pages when the knowledge should already live in Notion.
-- Creating duplicate entity pages instead of updating the existing one.
-
-## Optional bootstrap
-
-If `知识库索引` is missing, create it under the Shiper hub on the first ingest and seed it from major existing sections — do not invent summaries for pages you have not fetched.
+- Polished wiki page with no Inbox/Raw/Index/Log pass
+- Rewriting history inside a raw page
+- Answering from chat memory when the fact should already live in the wiki
+- Duplicate entity pages instead of updating the existing one
+- Skipping Inbox and scattering pages at the hub root
