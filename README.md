@@ -2,6 +2,10 @@
 
 个人 Agent Skills 合集（私有仓库）。每个目录是一个独立的 skill，可直接复制到任何支持 Agent Skills 的工具里使用。SKILL.md 里引用的文件全部用相对路径，整个目录拷走即可离线使用。
 
+## 在线 registry
+
+所有 skill 同步发布在 **https://oceanz.me/skills**（浏览器打开是卡片列表；Agent 用 `https://oceanz.me/skills?format=md` 浏览、`https://oceanz.me/skills/<slug>?include=all` 一次拿到某个 skill 的全部内容）。线上路径与本仓库目录同构：`<slug>/references/x.md` ⇔ `https://oceanz.me/skills/<slug>/references/x.md`。API 说明见 https://oceanz.me/skills-api 。
+
 ## 结构
 
 ```
@@ -31,6 +35,7 @@
 | [`collage-sticker-doodle`](collage-sticker-doodle/) | 通用贴纸涂鸦拼贴定格视频生成器（含锁定的婚礼请柬包 `invite-classic`） | 可用，**推荐** |
 | [`collage-stopmotion-invite`](collage-stopmotion-invite/) | 拼贴手账定格风婚礼请柬视频（v8） | 已被 `collage-sticker-doodle` 的 `invite-classic` 取代，保留备查 |
 | [`video-style-distill`](video-style-distill/) | 把任意风格参考蒸馏成一个新的视频生成 skill | 可用 |
+| [`match-cut-discovery-montage`](match-cut-discovery-montage/) | 弧线地平线匹配剪辑 · 发现蒙太奇风格的 20 秒品牌/产品发布短片（越切越快 + 逐词白字，收在产品名和品牌） | 可用 |
 | [`mlh-cursor-pro-claim`](mlh-cursor-pro-claim/) | 报名 MLH Global Hack Week 并 check-in，领取免费 Cursor Pro 的 SOP | 可用 |
 | [`doubao-tts-voiceover`](doubao-tts-voiceover/) | 用火山引擎豆包语音合成 2.0 生成自媒体配音（含 SRT 字幕、语气调参） | 可用 |
 | [`claude-cliproxy-vps`](claude-cliproxy-vps/) | 搭美国 VPS + CLIProxyAPI + 静态住宅代理，让 Claude Code 经代理用 Claude Pro 订阅（含省 token 设置） | 可用 |
