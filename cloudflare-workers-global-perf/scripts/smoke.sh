@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Read-only production smoke template. Prints PASS/FAIL lines; exit 1 on any FAIL.
+# Full checklist: ../references/verification.md — extend with step-specific asserts (immutable, x-opennext-cache, no 307).
 # Configure via env vars (all optional except BASE):
 #   BASE=https://example.com
 #   SEO_PATHS="/ /faq /about"            pages that must have a self canonical (+ show cache headers)

@@ -8,6 +8,8 @@ usage:
 - --reuse: reuse the exact probe set of an earlier measurement (fair before/after). The first run prints its id.
 - Optional GLOBALPING_TOKEN env var raises rate limits (never hardcode it).
 Writes <out>/<label>/<name>-run<i>.json (consumed by analyze.py).
+Run once ~3 min after deploy (cold) and again ~10 min later (warm); keep --reuse fixed.
+See references/verification.md for the full probe protocol.
 """
 import argparse, json, os, re, sys, time, urllib.error, urllib.request
 

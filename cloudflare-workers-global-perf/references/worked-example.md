@@ -1,5 +1,7 @@
 # 实战案例：Next.js 16 + OpenNext + D1（单区域 WNAM）游戏站，2026-10
 
+> 栈名词与"为何边缘也慢"见 background.md；步骤细节见 playbook.md；其它平台映射见 other-stacks.md。下列数字来自约 42 地点 × 3 轮 Globalping，热窗口约 T+10min。
+
 技术栈：Workers + Static Assets，D1 在美西，游戏页和结果页是动态页，另有 17 个纯静态的 SEO 页。用 Globalping 在 42 个地点各跑 3 轮。
 
 ## 基线诊断

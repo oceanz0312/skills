@@ -1,53 +1,184 @@
-# Cloudflare 配置（zone / Worker / D1）
+# Cloudflare 配置：zone / Worker / D1
 
-每一项都要单独批准。改之前先 GET 一次，记下原值，方便回滚。token 从 `$CLOUDFLARE_API_TOKEN` 读，不要打印出来。
+每一项单独批准。改前先 GET 记原值。Token 只用环境变量，**永不 echo / 不入库**。
+
 ```bash
-CF=https://api.cloudflare.com/client/v4; H=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "content-type: application/json")
-curl -s "${H[@]}" $CF/zones/$ZONE/argo/tiered_caching                          # GET 原值
-curl -s "${H[@]}" -X PATCH $CF/zones/$ZONE/argo/tiered_caching -d '{"value":"on"}'
-curl -s "${H[@]}" -X PATCH $CF/zones/$ZONE/cache/tiered_cache_smart_topology_enable -d '{"value":"on"}'
-curl -s "${H[@]}" -X PATCH $CF/zones/$ZONE/settings/0rtt -d '{"value":"on"}'
-curl -s "${H[@]}" -X PATCH $CF/zones/$ZONE/settings/early_hints -d '{"value":"off"}'
-curl -s "${H[@]}" -X PATCH $CF/accounts/$ACCOUNT/d1/database/$DB_ID -d '{"read_replication":{"mode":"auto"}}'   # 回滚改成 "disabled"
+export CF_API_TOKEN="${CLOUDFLARE_API_TOKEN:?}"   # 权限：Zone Settings Edit、Zone Read、D1 Edit（按需最小化）
+export ZONE_ID=your_zone_id_here
+export ACCOUNT_ID=your_account_id_here
+export D1_DATABASE_ID=your_d1_id_here
+CF="https://api.cloudflare.com/client/v4"
+H=(-H "Authorization: Bearer $CF_API_TOKEN" -H "content-type: application/json")
 ```
 
-| 项目 | 建议 | 说明 |
-|---|---|---|
-| Smart Placement `"placement": {"mode":"smart"}` | **先 A/B 测，低流量、用户遍布全球的站点通常关掉** | 一开始所有请求都是 `cf-placement: local-*`，等于没生效。后来打开测了一次，北美快了，但其他区域都慢了 100–200 ms，全球首页 p50 从约 120 升到约 250。原因是静态页本来就不查库，被挪到 D1 附近后就离用户远了 |
-| ⚠ placement 不随版本走 | — | 它是 script 级设置，**`wrangler rollback` 不会恢复它**，回滚后仍是最后一次 deploy 的 placement。要恢复只能改好 `wrangler.jsonc` 再 deploy 一次，并用响应头确认 |
-| 固定 placement region/hint | 不要用在整站 | 会让全站静态页都绕到那个区域。要用的话，只用在专门查库的拆分 Worker 上 |
-| Tiered Cache + Smart Topology | 开 | 免费，对走 CDN 的图片和 OG 有帮助，影响很小。曾经怀疑它导致北美变慢，关掉对照测了一次，确认无关 |
-| 0-RTT | 开 | 回访时少 1 次握手往返；GET 请求可以安全重放 |
-| Early Hints | 一般关 | 只有响应带 `Link: rel=preload` 头时才有 103 可发。Next 把 preload 写在 HTML 里，OpenNext 缓存命中时也不带 Link 头，所以开了也没效果 |
-| HTTP/3 | 保持开 | 看响应头 `alt-svc: h3` 确认 |
-| Cache Rules | 不需要 | 对 Worker 生成的 HTML 无效，因为 Worker 在缓存前面执行。静态资源已经用 `_headers` 管 |
-| Argo Smart Routing | 不开 | 付费，主要优化回源这一段；纯 Worker 没有源站 |
-| D1 迁移区域 | 不迁 | 用户分布在全球，迁到哪里都有人远；而且 D1 不能改区域，只能新建库再导数据 |
-| 中国大陆 | 维持现状 | Free 和 Pro 计划在中国大陆没有机房，China Network 需要企业版加 ICP 备案 |
+---
 
-## D1 read replication + Sessions API（CF-2）
+## 决策表
+
+| 项目 | 建议 | 费用 | 说明 |
+|---|---|---|---|
+| Smart Placement `placement.mode=smart` | **先 A/B**；低流量 + 全球用户 + 静态页多 → 通常**关** | 免费 | 静态页被挪到 D1 旁会离用户更远；实测可出现北美↓、全球↑ |
+| 固定 `placement` region/hint | **不要**用在整站 | 免费 | 全站静态页绕远；仅考虑拆"纯查库 Worker"时用 |
+| Tiered Cache | **开** | 免费 | 对 CDN 上的图/OG 有帮助；Worker HTML 基本无感 |
+| Smart Topology（配合 Tiered） | **开** | 免费 | 同上 |
+| 0-RTT | **开**（GET 可安全重放时） | 免费 | 回访少 1 次握手 |
+| Early Hints | **默认关**；仅当响应有 `Link: rel=preload` 再试 | 免费 | Next 常把 preload 写在 HTML；OpenNext HIT 无 Link 头 → 103 无从发 |
+| HTTP/3 | 保持开 | 免费 | 看 `alt-svc: h3` |
+| Cache Rules | 一般**不需要** | 免费 | 管不到 Worker HTML；静态已用 `_headers` |
+| Argo Smart Routing | **不开**（除非有传统源站） | 付费 | 优化回源；纯 Worker 无源站 |
+| D1 迁区 | **不迁** | — | 不能改区；只能新建+导数据；全球用户迁哪都有人远 |
+| D1 read replication | 代码就绪后 **开 auto** | 免费额度内 | 见下方 CF-2 |
+| 中国大陆 | 维持；要境内节点需企业版 + ICP | — | Free/Pro 无中国大陆 POP |
+
+---
+
+## CF-1：读原值 → 改 → 验证 → 回滚命令
+
+### 读原值（必做）
+```bash
+curl -s "${H[@]}" "$CF/zones/$ZONE_ID/argo/tiered_caching"
+curl -s "${H[@]}" "$CF/zones/$ZONE_ID/cache/tiered_cache_smart_topology_enable"
+curl -s "${H[@]}" "$CF/zones/$ZONE_ID/settings/0rtt"
+curl -s "${H[@]}" "$CF/zones/$ZONE_ID/settings/early_hints"
+curl -s "${H[@]}" "$CF/zones/$ZONE_ID/settings/http3"
+# Worker placement 在 wrangler 配置 / 最近一次 deploy 的 script settings，不在 zone settings
+```
+
+### 打开 Tiered + Topology + 0-RTT；Early Hints 先关
+```bash
+curl -s "${H[@]}" -X PATCH "$CF/zones/$ZONE_ID/argo/tiered_caching" \
+  -d '{"value":"on"}'
+curl -s "${H[@]}" -X PATCH "$CF/zones/$ZONE_ID/cache/tiered_cache_smart_topology_enable" \
+  -d '{"value":"on"}'
+curl -s "${H[@]}" -X PATCH "$CF/zones/$ZONE_ID/settings/0rtt" \
+  -d '{"value":"on"}'
+curl -s "${H[@]}" -X PATCH "$CF/zones/$ZONE_ID/settings/early_hints" \
+  -d '{"value":"off"}'
+```
+
+### 关掉 Smart Placement（wrangler）
+```jsonc
+// wrangler.jsonc — 删除或注释：
+// "placement": { "mode": "smart" },
+```
+然后 `npx wrangler deploy`。用响应头确认：
+```bash
+curl -sI "https://$HOST/some-dynamic" | tr -d '\r' | grep -i cf-placement
+# 关掉后：通常不再出现 cf-placement；或不再是系统强制的 remote-*
+```
+
+### Early Hints 试验协议
+1. `PATCH early_hints=on`
+2. `curl -sI` 看有没有 `link: <...>; rel=preload`
+3. 若**没有** Link 头（Next 内联在 HTML、OpenNext HIT 也无 Link）→ 立刻改回 `off`，记入日志"无效，已关"
+4. 只有确认有 Link 头时才保留 on，并做拨测对比
+
+### ⚠ Placement 不随版本
+- Placement 是 **script 级设置**，不是 deployment 快照字段。
+- **`npx wrangler rollback <versionId>` 不会恢复旧 placement。**
+- 回滚代码后若曾改过 placement，必须再 deploy 一次带正确 `wrangler` 配置的版本，并用 `cf-placement` 头确认。
+- 实验性打开 placement 时：记下实验 version id，测完用**正向 deploy**（正确配置）回到主线，不要假设 rollback 能救场。
+
+### Smart Placement A/B 怎么做
+1. 基线：placement 关，热拨测 3 轮记全球/分区 p50。
+2. 临时 deploy：`placement.mode=smart`（可不开 PR，但要记 version id）。
+3. 同一 `--reuse` 探针再跑 3–8 轮。
+4. 判据：若北美↓但欧亚南美↑ 100–200 ms、全球 p50 变差 → **保持关**。
+5. 用正确配置 redeploy 主线；确认头；不要依赖 rollback。
+
+### CF-1 回滚（zone）
+```bash
+curl -s "${H[@]}" -X PATCH "$CF/zones/$ZONE_ID/argo/tiered_caching" -d '{"value":"off"}'
+curl -s "${H[@]}" -X PATCH "$CF/zones/$ZONE_ID/cache/tiered_cache_smart_topology_enable" -d '{"value":"off"}'
+curl -s "${H[@]}" -X PATCH "$CF/zones/$ZONE_ID/settings/0rtt" -d '{"value":"off"}'
+curl -s "${H[@]}" -X PATCH "$CF/zones/$ZONE_ID/settings/early_hints" -d '{"value":"off"}'
+```
+
+---
+
+## CF-2：D1 read replication + Sessions API
+
+### 打开 / 关闭副本（账户 API）
+```bash
+# 开
+curl -s "${H[@]}" -X PATCH "$CF/accounts/$ACCOUNT_ID/d1/database/$D1_DATABASE_ID" \
+  -d '{"read_replication":{"mode":"auto"}}'
+# 关（代码 withSession 在关闭后会退回主库行为，但仍建议保留 D1_REPLICA kill switch）
+curl -s "${H[@]}" -X PATCH "$CF/accounts/$ACCOUNT_ID/d1/database/$D1_DATABASE_ID" \
+  -d '{"read_replication":{"mode":"disabled"}}'
+```
+
+### 代码模式（可粘贴骨架）
 ```ts
-// 只给能容忍复制延迟的公开读用：别人看的分享结果、聚合统计、公共榜单 top
-const replica = typeof env.DB.withSession === "function"
-  ? () => repos(drizzle(env.DB.withSession("first-unconstrained")))   // 每次调用都新开一个 session
-  : null;
-const reader = () => (replica && process.env.D1_REPLICA !== "off" ? replica() : primaryRepos);   // kill switch
+// container / db bootstrap
+type SessionConstraint = "first-unconstrained" | "first-primary" | string;
+interface D1Binding {
+  withSession?: (constraint?: SessionConstraint) => unknown;
+}
 
-let bundle = fresh ? await primary.getResult(id) : await reader().getResult(id);
-if (!bundle && !fresh && replica) bundle = await primary.getResult(id);   // 副本还没同步到 → 回退主库，避免误报 404
+function makeRepos(db: Database) {
+  return { games: createGameRepository(db), leaderboard: createLeaderboardRepository(db) };
+}
+
+const primary = makeRepos(primaryDb);
+
+let replica: (() => ReturnType<typeof makeRepos>) | null = null;
+if (typeof env.DB.withSession === "function") {
+  replica = () => makeRepos(createD1Database(env.DB.withSession!("first-unconstrained")));
+}
+
+const reader = () =>
+  replica && process.env.D1_REPLICA !== "off" ? replica() : primary;
+
+// 共享结果（可容忍短暂延迟）
+let bundle = options.fresh
+  ? await primary.games.getResultBundle(id)
+  : await reader().games.getResultBundle(id);
+// 副本尚未同步到刚写入的行 → 回退主库，避免误 404
+if (!bundle && !options.fresh && replica) {
+  bundle = await primary.games.getResultBundle(id);
+}
 ```
-- **必须读主库**的情况（不开 session 就是主库）：
-  - 所有写入；
-  - 每日限额和计数（读副本可能让用户多玩）；
-  - 对局中的 session 和 round；
-  - 本人刚结束时看的结果页（`fresh`）；
-  - fresh 榜单。
-- 需要"读到自己刚写的数据"又想用副本时，可以把写入返回的 bookmark 放进 cookie，下次用 `withSession(bookmark)`。
-- 测试：
-  - 集成测试里模拟一个"落后的空副本"，断言共享结果会回退主库；本人 fresh 读只走主库；写入不经过副本；`D1_REPLICA=off` 时生效。
-  - 线上用脚本连续跑 3 局，每局一结束立刻读本人结果页、API 和分享页，确认第 4 局被限额拦下。
-- 回滚：PATCH `read_replication.mode=disabled`，此时 `withSession` 自动退回主库；或者把 `D1_REPLICA` 设为 off。
 
-## 冷实例与低流量
-- 低流量 Worker 在很多机房的实例都是冷的，拨测会呈双峰（约 70 ms 和约 350 ms）。这不是代码回归：回滚到旧版本后同样双峰。
-- 判断方法：同一批探针连跑 3–8 轮；对照 deploy 后约 3 分钟（冷）和约 10 分钟后（热）的结果；也可以临时回滚做 A/B，测完记得 roll forward。
+### 谁必须读主库（不要 withSession，或 `first-primary`）
+| 路径 | 原因 |
+|---|---|
+| 所有写入 | 副本只读 |
+| 每日限额 / 计数读写 | 副本延迟 → 用户可能多玩 |
+| 进行中的 session / round | 强一致 |
+| 本人刚结束后的结果页（`fresh`） | 必须立刻看见 |
+| 刚改昵称 / 刚上榜后的 fresh 榜 | 同上 |
+
+可选：写入返回的 **bookmark** 塞进 cookie，下次 `withSession(bookmark)` 读"至少新鲜到该点"的副本。
+
+### Kill switch
+- `D1_REPLICA=off` → `reader()` 退回 primary（不改 API 开关也能止血）。
+- `EDGE_CACHE=off` → 见 playbook D（另一开关，常一起记在 runbook）。
+
+### 测试
+- 集成：注入"空的落后副本" → 共享读回退主库；`fresh` 只打主库；写入不经副本；`D1_REPLICA=off`。
+- 线上最小写入脚本：同一 player key 连续 3 局；每局结束立刻 GET 本人结果页 + API + 陌生人视角分享页；第 4 局应 429/限额。报告里写明留下的测试行。
+
+### 验证头 / 行为（部署后）
+```bash
+# 功能：打完立刻可读（副本延迟被 fresh/回退兜住）
+# 性能：热拨测下 result/share 北美以外再降一截；对比 CF-1 基线
+# 开关：临时 D1_REPLICA=off 后延迟应回到"仅边缘缓存 + batch"水平
+```
+
+### 回滚顺序
+1. `D1_REPLICA=off`（最快）
+2. 或 `read_replication.mode=disabled`
+3. 或 `wrangler rollback <versionId>`（注意 placement 坑）
+
+---
+
+## Worker 部署与版本
+
+```bash
+npx wrangler deployments list          # 记当前 version id = 回滚点
+npx wrangler deploy                    # 记下新 version、startup ms、upload size
+npx wrangler rollback <prevVersionId>  # 代码回滚；placement 不回滚！
+```
+
+DNS、Email Routing、密钥轮换：**本 skill 默认不动**。需要改时另开批准项。
