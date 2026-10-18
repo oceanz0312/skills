@@ -1,9 +1,6 @@
 ---
 name: claude-cliproxy-vps
-description: >-
-  在美国 VPS 上部署开源 CLIProxyAPI，配固定出口代理，接入已开通 Pro 的 Claude 账号，用 Cloudflare Workers 中转域名对外提供访问，
-  并支持多账号（每个账号一个独享出口 IP、轮询加会话绑定），在本地走通整条调用链路的技术验证流程（含省 token 的参数设置）。
-  适用场景：想把 Claude 订阅经自建代理暴露成 API，并用本地开发工具验证端到端是否打通；或者想给已有部署加中转域名、加账号。
+description: 在美国 VPS 上部署开源 CLIProxyAPI，配固定出口代理，接入已开通 Pro 的 Claude 账号，用 Cloudflare Workers 中转域名对外提供访问，并支持多账号（每个账号一个独享出口 IP、轮询加会话绑定），在本地走通整条调用链路的技术验证流程（含省 token 的参数设置）。适用场景：想把 Claude 订阅经自建代理暴露成 API，并用本地开发工具验证端到端是否打通；或者想给已有部署加中转域名、加账号。
 ---
 # 用开源 CLIProxyAPI 走通 Claude 订阅调用链路（技术验证）
 
