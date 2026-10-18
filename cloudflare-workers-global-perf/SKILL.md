@@ -1,10 +1,6 @@
 ---
 name: cloudflare-workers-global-perf
-description: >-
-  给跑在 Cloudflare Workers 上的站点（尤其 Next.js + OpenNext + D1）做全球提速：先用 Globalping
-  多地区拨测量出各区域 TTFB，再按"静态资源缓存 → SEO 页走静态缓存 → 查询合并 → 边缘缓存 →
-  瘦身 → zone 配置 → D1 读副本"逐个 PR 上线、复测、记回滚点。用户说"网站在某些地区打开很慢"
-  "全球拨测一下""Workers/OpenNext/D1 提速""TTFB 太高"时使用。
+description: 给跑在 Cloudflare Workers 上的站点（尤其 Next.js + OpenNext + D1）做全球提速：先用 Globalping 多地区拨测量出各区域 TTFB，再按"静态资源缓存 → SEO 页走静态缓存 → 查询合并 → 边缘缓存 → 瘦身 → zone 配置 → D1 读副本"逐个 PR 上线、复测、记回滚点。用户说"网站在某些地区打开很慢""全球拨测一下""Workers/OpenNext/D1 提速""TTFB 太高"时使用。
 ---
 # Cloudflare Workers 全球提速
 
