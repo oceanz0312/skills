@@ -1,6 +1,6 @@
 # skills
 
-个人 Agent Skills 合集（私有仓库）。每个目录是一个独立的 skill，可直接复制到任何支持 Agent Skills 的工具里使用。SKILL.md 里引用的文件全部用相对路径，整个目录拷走即可离线使用。
+个人 Agent Skills 合集（公开仓库）。每个目录是一个独立的 skill，可直接复制到任何支持 Agent Skills 的工具里使用。SKILL.md 里引用的文件全部用相对路径，整个目录拷走即可离线使用。
 
 ## 在线 registry
 
