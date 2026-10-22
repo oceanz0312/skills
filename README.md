@@ -41,6 +41,7 @@
 | [`claude-cliproxy-vps`](claude-cliproxy-vps/) | 搭美国 VPS + CLIProxyAPI + 静态住宅代理，让 Claude Code 经代理用 Claude Pro 订阅（含省 token 设置） | 可用 |
 | [`karpathy-llm-wiki`](karpathy-llm-wiki/) | Astro-Han 权威 Karpathy LLM Wiki skill（Ingest / Query / Lint；含 Shiper Notion 路径映射） | 可用 |
 | [`cloudflare-workers-global-perf`](cloudflare-workers-global-perf/) | Cloudflare Workers（Next.js/OpenNext/D1）全球提速：含框架背景、可粘贴配置、详尽验证，以及 Vercel/Netlify/Node/Remix/CloudFront/Fastly 等对照 | 可用 |
+| [`humanlike-browsing`](humanlike-browsing/) | Agent 操作别人网站浏览器时的拟人化约束：放慢节奏、随机化鼠标/输入/滚动、限频、遇验证就停，降低风控封号风险 | 可用 |
 
 视频类 skill 都用代码出片：HTML Canvas 逐帧绘制 + Playwright 截图 + FFmpeg 合成，Python 负责抠图、校验和 QA。
 
