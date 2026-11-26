@@ -52,6 +52,35 @@ b{font-weight:600}
 .hero{padding:52px 0 0}
 .eyebrow{font-size:13px;color:var(--muted)}
 h1{font-size:48px;line-height:1.12;font-weight:600;letter-spacing:-.025em;margin-top:10px}
+/* agent-cta:start 首屏右侧：一键复制给 agent 的指令卡片 */
+.hero-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px 40px}
+.hero-head>div:first-child{min-width:0}
+.cta{position:relative;flex:none;width:360px;padding:18px 18px 14px;border-radius:18px;border:1px solid rgb(255 107 61 / .55);background:linear-gradient(160deg,rgb(255 107 61 / .16),rgb(255 107 61 / .04) 55%),var(--surface);box-shadow:0 0 0 6px rgb(255 107 61 / .06),0 18px 48px -12px rgb(255 107 61 / .35);cursor:pointer;transition:border-color .15s,box-shadow .2s,transform .15s}
+.cta:hover{border-color:var(--brand);box-shadow:0 0 0 6px rgb(255 107 61 / .1),0 22px 56px -12px rgb(255 107 61 / .5);transform:translateY(-1px)}
+.cta-tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--brand);letter-spacing:.02em}
+.cta-tag i{width:6px;height:6px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 3px rgb(255 107 61 / .25);animation:cta-dot 1.8s ease-in-out infinite}
+.cta-title{margin-top:6px;font-size:18px;line-height:1.4;font-weight:600;color:var(--fg)}
+.cta-prompt{position:relative;margin-top:12px;padding:10px 12px;max-height:52px;overflow:hidden;border-radius:10px;background:var(--bg);border:1px solid var(--line);font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg-2);white-space:pre-wrap}
+.cta-prompt::after{content:"";position:absolute;inset:auto 0 0;height:30px;background:linear-gradient(transparent,var(--bg))}
+.cta-btn{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:46px;margin-top:12px;border:0;border-radius:999px;background:var(--brand);color:#fff;font:600 15px/1 var(--font);cursor:pointer;transition:filter .15s,transform .1s}
+.cta-btn:hover{filter:brightness(1.08)}
+.cta-btn:active{transform:scale(.98)}
+.cta-btn:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
+.cta-btn svg{width:17px;height:17px;flex:none}
+/* 按钮上定时扫过一道高光，提示这里可以点 */
+.cta-btn::after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:30%;background:linear-gradient(100deg,transparent,rgb(255 255 255 / .35),transparent);transform:skewX(-20deg);animation:cta-shine 3.2s ease-in-out 1s infinite}
+.cta-btn .idle{display:contents}
+.cta-btn .done{display:none}
+.cta.copied .cta-btn{background:var(--good);color:#0b2414}
+.cta.copied .cta-btn::after{animation:none}
+.cta.copied .cta-btn .idle{display:none}
+.cta.copied .cta-btn .done{display:inline}
+.cta-hint{display:block;margin-top:8px;text-align:center;font-size:12px;color:var(--muted)}
+@keyframes cta-shine{0%,60%{left:-40%}100%{left:130%}}
+@keyframes cta-dot{50%{box-shadow:0 0 0 6px rgb(255 107 61 / 0)}}
+@media (prefers-reduced-motion:reduce){.cta-btn::after,.cta-tag i{animation:none}}
+@media (max-width:900px){.hero-head{flex-direction:column;align-items:stretch}.cta{width:auto}}
+/* agent-cta:end */
 .kpis{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:72px;margin-top:44px}
 .kpi b{display:block;font-size:88px;line-height:.9;letter-spacing:-.05em;color:var(--brand)}
 .kpi b small{font-size:.46em;letter-spacing:-.02em;margin-left:4px}
@@ -247,8 +276,26 @@ footer{display:flex;justify-content:space-between;font-size:12px;color:var(--mut
 
   <!-- 首屏：直接给收益 -->
   <section class="hero">
-    <p class="eyebrow">视频制作 Agent · 模型调用成本 ｜ 72 部真实成片，按官方价目计</p>
-    <h1>同样一部片子，模型成本降了六到八成</h1>
+    <div class="hero-head">
+      <div>
+        <p class="eyebrow">视频制作 Agent · 模型调用成本 ｜ 72 部真实成片，按官方价目计</p>
+        <h1>同样一部片子，模型成本降了六到八成</h1>
+      </div>
+      <!-- agent-cta:start -->
+      <div class="cta" id="cta" role="group" aria-label="复制给你的 Agent">
+        <span class="cta-tag"><i aria-hidden="true"></i>给你的 AI 用</span>
+        <p class="cta-title">让你的 Agent 查出哪里在烧 token</p>
+        <div class="cta-prompt" aria-hidden="true">请帮我分析我的 AI agent 流水线哪里在浪费模型费用，能怎么降。
+1. 先读取这个 Skill，按它的流程来做：
+   github.com/oceanz0312/skills/…/video-agent-cost-sop</div>
+        <button class="cta-btn" id="cta-btn" type="button">
+          <span class="idle"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.25" y="5.25" width="8" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.75 5.25V4.5a1.75 1.75 0 0 0-1.75-1.75H4.5A1.75 1.75 0 0 0 2.75 4.5V9a1.75 1.75 0 0 0 1.75 1.75h.75" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span>一键复制给你的 Agent</span></span>
+          <span class="done" aria-live="polite"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> 已复制，去粘贴给你的 Agent</span>
+        </button>
+        <span class="cta-hint">粘贴到 Claude Code、Cursor、Codex 等任意 AI 助手</span>
+      </div>
+      <!-- agent-cta:end -->
+    </div>
     <div class="kpis">
       <div class="kpi"><b class="num">−79<small>%</small></b><span>30 秒片整片：约 $2 → $0.42</span></div>
       <div class="kpi"><b class="num">−61<small>%</small></b><span>1 分钟片整片：约 $1.65 → $0.65</span></div>
@@ -788,6 +835,47 @@ document.getElementById('theme').addEventListener('click', () => {
   const root = document.documentElement;
   root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
 });
+</script>
+<script>
+// agent-cta:start 一键复制给 agent：复制一段指令，让读者自己的 AI 拉取这个 Skill 并分析他的项目
+const AGENT_PROMPT = `请帮我分析我的 AI agent 流水线（视频制作类，或其他多步骤、按 token 计费的 agent）哪里在浪费模型费用，能怎么降。
+
+1. 先读取这个 Skill，按它的流程来做：
+   https://github.com/oceanz0312/skills/tree/main/video-agent-cost-sop
+   入口文件：https://raw.githubusercontent.com/oceanz0312/skills/main/video-agent-cost-sop/SKILL.md
+   先读 SKILL.md，再按需读取 references/metering.md 和 references/case-study.md。打不开 GitHub 页面时，可以 git clone https://github.com/oceanz0312/skills.git 后读 video-agent-cost-sop/ 目录。
+2. 结合我当前项目的代码、模型调用方式和已有的用量数据，按 Skill 的第 1–2 步：先确认每次模型调用能不能归到具体任务和步骤（账本缺什么就列出来），再把成本拆成「固定开销 × 段数」和「按量增长」两部分，找出花钱最多的三项，每项给出数字和调用证据。
+3. 按 Skill 第 3 步的杠杆顺序给出建议：每条写现状、改法、预计能省多少、对质量的风险，以及怎么用同一份输入做前后对比验证。数字标明是实测、拟合还是估算。
+4. 在我确认之前，不要改代码、不要改提示词或模型配置、不要部署。`
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    // 剪贴板接口不可用（非安全上下文或被拒）时退回到选中文本复制
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    ta.remove()
+    return ok
+  }
+}
+const cta = document.getElementById('cta')
+let ctaTimer
+// 整张卡片都能点，不只按钮
+cta.addEventListener('click', async () => {
+  const ok = await copyText(AGENT_PROMPT)
+  if (!ok) return window.prompt('复制下面这段话，粘贴给你的 Agent：', AGENT_PROMPT)
+  cta.classList.add('copied')
+  clearTimeout(ctaTimer)
+  ctaTimer = setTimeout(() => cta.classList.remove('copied'), 2600)
+})
+// agent-cta:end
 </script>
 </body>
 </html>
