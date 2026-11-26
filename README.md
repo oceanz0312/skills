@@ -41,6 +41,7 @@
 | [`claude-cliproxy-vps`](claude-cliproxy-vps/) | 搭美国 VPS + CLIProxyAPI + 静态住宅代理，让 Claude Code 经代理用 Claude Pro 订阅（含省 token 设置） | 可用 |
 | [`karpathy-llm-wiki`](karpathy-llm-wiki/) | Astro-Han 权威 Karpathy LLM Wiki skill（Ingest / Query / Lint；含 Shiper Notion 路径映射） | 可用 |
 | [`cloudflare-workers-global-perf`](cloudflare-workers-global-perf/) | Cloudflare Workers（Next.js/OpenNext/D1）全球提速：含框架背景、可粘贴配置、详尽验证，以及 Vercel/Netlify/Node/Remix/CloudFront/Fastly 等对照 | 可用 |
+| [`cloudflare-fullchain-performance`](cloudflare-fullchain-performance/) | Cloudflare Workers 全链路性能（React/TanStack Start/D1/R2）：网络入口与大陆绕行、D1 副本 + 写后书签、R2 私有视频先鉴权后缓存、公开 HTML 缓存、字体与前端、测量与安全发布；附 [演示报告](cloudflare-fullchain-performance/performance-report.html) | 可用 |
 | [`humanlike-browsing`](humanlike-browsing/) | Agent 操作别人网站浏览器时的拟人化约束：放慢节奏、随机化鼠标/输入/滚动、限频、遇验证就停，降低风控封号风险 | 可用 |
 
 视频类 skill 都用代码出片：HTML Canvas 逐帧绘制 + Playwright 截图 + FFmpeg 合成，Python 负责抠图、校验和 QA。
@@ -111,6 +112,15 @@
 - **什么时候用**：网站在某些地区打开很慢、全球拨测、Workers/OpenNext/D1 提速；或要把同一套思路迁到 Vercel / Netlify / 自建+CDN / Remix 等。
 - **文档**：`references/background.md` 讲清 Next/OpenNext/Workers/D1/Cache API/Placement 等层；`playbook.md` + `cloudflare-settings.md` 可粘贴配置与 curl；`verification.md` 门禁与回滚；`other-stacks.md` 跨平台映射；`worked-example.md` 实战数字（首页 p50 432→68 ms）。
 - **要点**：永不缓存清单；可变字段短 TTL；Placement 不随 rollback；Early Hints 无 Link 则关；冷实例双峰。
+
+### cloudflare-fullchain-performance · Cloudflare 全链路性能优化
+
+- **做什么**：从用户到首字节、资源下载、可交互整条链路找瓶颈，按「网络入口 / D1 / R2 与媒体 / Worker 与 HTML / 前端资源」五类分支逐项实施，正确性、权限和性能一起验收。
+- **什么时候用**：Workers 站点打开慢、跨地区或中国大陆访问慢、登录后页面每次跨洋查库、视频首播和拖动慢、公开页面每次重渲染、第三方字体拖首屏。
+- **文档**：`references/measurement.md` 测量口径与浏览器快照；`d1.md` + `d1-implementation.md` + `d1-verification.md` 请求级会话、就近副本、写后书签；`r2.md` + `r2-verification.md` 先鉴权后缓存、Range/条件请求与 24 项验收；`worker-html.md`、`frontend.md`、`network.md`、`release.md`；`evidence.md` 实战证据与移植边界。
+- **脚本与模板**：`scripts/probe.py` 只读 HTTP 探针（分段耗时、缓存状态、可选 Range/SHA 校验）；`scripts/browser_snapshot.js` 页面资源快照；`assets/` 里是请求数据库路由、浏览器/SSR 书签两份可移植模板和执行记录模板。
+- **要点**：「已实现 / 已功能验证 / 已实测加速」三种状态分开报；副本不替代事务和权限；私有文件每次先鉴权再取缓存；一次只改一层、保留前后样本。
+- **和 `cloudflare-workers-global-perf` 的分工**：那个偏 Next.js + OpenNext、全球多地拨测和 zone 配置；这个偏数据一致性（D1 书签）、私有媒体（R2）、大陆链路和发布验收。
 
 ---
 

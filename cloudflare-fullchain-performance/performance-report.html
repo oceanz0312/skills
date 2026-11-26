@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>性能优化报告 · AI 视频制作平台</title>
+<style>
+/* 令牌沿用产品设计系统：深色默认、品牌珊瑚橙；前后两档色已用 dataviz 校验（深色底 #1a1a1a、浅色底 #ffffff） */
+:root{
+  /* 西文与数字先用系统字体（减号宽度正常），中文回落到苹方 */
+  --font:-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif;
+  --mark:#ff6b3d;
+}
+[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111111;--surface:#1a1a1a;--raised:#242424;--hover:#202020;
+  --fg:#f5f5f5;--fg-2:#d4d4d1;--muted:#a3a3a3;
+  --line:rgb(255 255 255 / .08);--line-strong:rgb(255 255 255 / .14);
+  --brand:#ff6b3d;--brand-soft:rgb(255 107 61 / .14);
+  --before:#a34a2c;--after:#ff6b3d;
+  --good:#4ade80;--warn:#fbbf24;
+  --glow:rgb(255 107 61 / .13);--shadow:0 12px 32px rgb(0 0 0 / .45);
+}
+[data-theme="light"]{
+  color-scheme:light;
+  --bg:#fafaf9;--surface:#ffffff;--raised:#f2f2f0;--hover:#f8f8f6;
+  --fg:#141414;--fg-2:#2c2c2c;--muted:#545454;
+  --line:rgb(0 0 0 / .08);--line-strong:rgb(0 0 0 / .14);
+  --brand:#c0441c;--brand-soft:rgb(255 107 61 / .12);
+  --before:#f0916e;--after:#c0441c;
+  --good:#16a34a;--warn:#b45309;
+  --glow:rgb(255 107 61 / .11);--shadow:0 12px 32px rgb(0 0 0 / .12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{position:relative;font:15px/1.6 var(--font);color:var(--fg);background:var(--bg);-webkit-font-smoothing:antialiased;min-height:100vh}
+/* 品牌光晕只作装饰层，不作为文字底色 */
+.glow{position:absolute;inset:0 0 auto;height:620px;background:radial-gradient(1100px 560px at 12% -140px,var(--glow),transparent 70%);pointer-events:none}
+.num{font-variant-numeric:tabular-nums}
+.wrap{position:relative;max-width:1080px;margin:0 auto;padding:0 24px}
+b{font-weight:600}
+
+/* 顶栏 */
+.top{display:flex;align-items:center;justify-content:space-between;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+.brand i{width:16px;height:16px;border-radius:5px;background:var(--mark)}
+.meta{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted)}
+.pill{font-size:12px;line-height:20px;padding:0 8px;border-radius:999px;border:1px solid var(--line-strong);color:var(--fg-2)}
+.icon-btn{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--fg-2);cursor:pointer}
+.icon-btn:hover{background:var(--raised)}
+
+/* 首屏 */
+.hero{padding:52px 0 0}
+.eyebrow{font-size:13px;color:var(--muted)}
+h1{font-size:48px;line-height:1.12;font-weight:600;letter-spacing:-.025em;margin-top:10px}
+.kpis{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:72px;margin-top:44px}
+.kpi b{display:block;font-size:88px;line-height:.9;letter-spacing:-.05em}
+.kpi b{color:var(--brand)}
+.kpi b small{font-size:.46em;letter-spacing:-.02em;margin-left:4px}
+.kpi span{display:block;margin-top:16px;font-size:14px;color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:48px}
+.tile{display:block;color:inherit;text-decoration:none;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;transition:border-color .15s}
+.tile:hover{border-color:var(--line-strong)}
+.tile .head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--fg-2)}
+.tile .v{font-size:42px;line-height:46px;font-weight:600;letter-spacing:-.03em;margin-top:16px}
+.tile .v small{font-size:15px;font-weight:500;letter-spacing:0;color:var(--muted);margin-left:8px}
+.tile p{margin-top:8px;font-size:13px;color:var(--fg-2)}
+/* 收益数字统一用品牌色高亮；未实测的结论保持正文色 */
+.hl{color:var(--brand)}
+.skill-strip{display:flex;align-items:center;justify-content:space-between;gap:16px 24px;margin-top:12px;padding:16px 20px;border-radius:14px;background:var(--surface);border:1px solid rgb(255 107 61 / .45);color:inherit;text-decoration:none;transition:border-color .15s}
+.skill-strip:hover{border-color:var(--brand)}
+.ss-l{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;font-size:15px}
+.ss-r{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 18px;font-size:13px;color:var(--muted)}
+.ss-r b{font-size:22px;letter-spacing:-.02em;color:var(--brand);margin-right:4px}
+.skill-card{background:var(--surface);border:1px solid rgb(255 107 61 / .45);border-radius:16px;padding:28px;margin-top:24px}
+.skill-top{display:grid;grid-template-columns:1fr auto;gap:24px 40px;align-items:end}
+.skill-top p{margin-top:12px;font-size:14px;color:var(--fg-2);max-width:420px}
+.skill-card .sstats{grid-template-columns:repeat(5,auto);gap:32px;margin-top:0}
+.skill-card .sstats b{font-size:44px;line-height:1;letter-spacing:-.03em;color:var(--brand)}
+.skill-card .sstats span{display:block;margin-top:6px}
+.cover{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:28px}
+.cover>div{background:var(--raised);border-radius:12px;padding:16px 18px}
+.cover h3{font-size:14px;font-weight:600}
+.cover ul{list-style:none;margin-top:6px}
+.cover li{font-size:13px;color:var(--fg-2);margin-top:6px;line-height:1.55}
+
+/* 状态：保留色，始终配图标与文字 */
+.st{display:inline-flex;align-items:center;gap:5px;font-size:12px;line-height:20px;color:var(--fg-2);padding:0 8px 0 6px;border-radius:999px;background:var(--raised);white-space:nowrap;font-weight:400;letter-spacing:0}
+.st svg{width:12px;height:12px;flex:none}
+.st.good svg{color:var(--good)}
+.st.warn svg{color:var(--warn)}
+
+/* 每一项：收益 → 为什么慢 → 怎么做 */
+.area{margin-top:96px}
+.area-head h2{font-size:30px;line-height:1.2;font-weight:600;letter-spacing:-.02em;display:flex;align-items:center;gap:12px}
+.area-head p{font-size:17px;color:var(--fg-2);margin-top:8px}
+.step{display:flex;align-items:center;gap:10px;margin:32px 0 12px;font-size:13px;color:var(--muted)}
+.step i{font-style:normal;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--brand-soft);color:var(--fg);font-size:11px;font-weight:600}
+
+/* 收益卡：每张卡以优化前为 100% 自成刻度 */
+.gains{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.gain{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;outline:none}
+.gain:hover,.gain:focus-visible{border-color:var(--line-strong)}
+.gain .lbl{font-size:13px;color:var(--fg-2)}
+.gain .big{font-size:44px;line-height:1;font-weight:600;letter-spacing:-.035em;margin-top:14px}
+.gain .big small{display:block;font-size:13px;line-height:1.4;font-weight:400;letter-spacing:0;color:var(--muted);margin-top:8px}
+.bars{display:grid;grid-template-columns:44px 1fr auto;align-items:center;column-gap:10px;row-gap:4px;margin-top:16px;font-size:12px}
+.bars .k{color:var(--muted)}
+.bars .t{height:8px;position:relative}
+.bars .t span{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0;min-width:2px}
+.bars .t.b span{background:var(--before)}
+.bars .t.a span{background:var(--after)}
+.bars .n{text-align:right;color:var(--fg-2);white-space:nowrap}
+.bars .wide{grid-column:2/4;text-align:left}
+.gain.text .big{font-size:30px;line-height:44px}
+
+/* 链路图：优化前 / 优化后 */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px 22px;height:calc(100% - 64px)}
+.panel h3{font-size:13px;font-weight:500;color:var(--muted)}
+.path{display:flex;align-items:stretch;margin-top:16px}
+.node{flex:1;min-width:0;text-align:center;padding:10px 6px;border-radius:10px;background:var(--raised);font-size:13px;line-height:1.35}
+.node small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.node.hot{box-shadow:inset 0 0 0 1px var(--brand)}
+.link{flex:none;width:72px;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;line-height:1.3;color:var(--muted);text-align:center}
+.link::before{content:"";width:100%;height:2px;background:var(--line-strong);border-radius:1px}
+.link.slow::before{background:var(--before);height:3px}
+.link.fast::before{background:var(--after);height:3px}
+.link.cut::before{opacity:.4}
+.reasons,.hows{list-style:none;margin-top:16px}
+.reasons li,.hows li{position:relative;padding-left:18px;font-size:14px;color:var(--fg-2);margin-top:8px;line-height:1.6}
+.reasons li::before,.hows li::before{content:"";position:absolute;left:3px;top:.62em;width:6px;height:6px;border-radius:50%}
+.reasons li::before{background:var(--before)}
+.hows li::before{background:var(--after)}
+.reasons b,.hows b{color:var(--fg)}
+
+/* 底部：规模价值、还没解决、口径 */
+.block{margin-top:96px}
+.block h2{font-size:22px;font-weight:600;letter-spacing:-.01em;margin-bottom:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.scale-card{padding:22px 24px 24px}
+.scale-card h3{font-size:17px;font-weight:600}
+.scale-card .gain{background:var(--raised);border-color:transparent}
+.skill-name{display:inline-block;font-size:13px;padding:1px 8px;border-radius:6px;background:var(--brand-soft);color:var(--fg)}
+.sstats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:20px}
+.sstats b{display:block;font-size:28px;line-height:1.1;letter-spacing:-.02em}
+.sstats span{font-size:12px;color:var(--muted)}
+.flow{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;counter-reset:s}
+.flow li{counter-increment:s;display:flex;align-items:center;gap:6px;font-size:13px;line-height:20px;padding:3px 10px 3px 4px;border-radius:999px;background:var(--raised);color:var(--fg-2)}
+.flow li::before{content:counter(s);display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--brand-soft);color:var(--fg);font-size:11px;font-weight:600}
+.facts{list-style:none;margin-top:16px}
+.facts li{position:relative;padding-left:16px;font-size:14px;color:var(--fg-2);margin-top:8px}
+.facts li::before{content:"";position:absolute;left:2px;top:.68em;width:5px;height:5px;border-radius:50%;background:var(--brand)}
+.open{list-style:none}
+.open li{display:grid;grid-template-columns:150px 1fr 240px;gap:24px;padding:16px 24px;border-top:1px solid var(--line);font-size:14px;color:var(--fg-2)}
+.open li:first-child{border-top:0}
+.open b{color:var(--fg)}
+.open em{font-style:normal;color:var(--muted)}
+details.data{margin-top:12px}
+details.data summary{cursor:pointer;font-size:13px;color:var(--muted);padding:6px 0}
+table.data{width:100%;border-collapse:collapse;font-size:14px}
+table.data th{font-weight:500;color:var(--muted);text-align:left;font-size:12px;padding:12px 16px 10px;border-bottom:1px solid var(--line)}
+table.data td{padding:11px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+table.data tr:last-child td{border-bottom:0}
+table.data .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.method{margin-top:64px;padding:20px 0 0;border-top:1px solid var(--line)}
+.method h2{font-size:14px;color:var(--fg-2)}
+.method ul{list-style:none;margin-top:8px}
+.method li{font-size:13px;color:var(--muted);margin-top:4px}
+footer{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:40px 0 48px}
+
+/* 悬停提示 */
+.tip{position:fixed;left:0;top:0;z-index:20;pointer-events:none;background:var(--raised);border:1px solid var(--line-strong);border-radius:10px;padding:10px 12px;font-size:13px;width:max-content;max-width:300px;box-shadow:var(--shadow);opacity:0;transition:opacity .1s}
+.tip.on{opacity:1}
+.tip h5{font-size:13px;font-weight:600;margin-bottom:6px}
+.tip .r{display:flex;justify-content:space-between;gap:20px;color:var(--fg-2);line-height:1.7}
+.tip .r i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.tip .r b{color:var(--fg);font-variant-numeric:tabular-nums}
+.tip p{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.55}
+
+@media (max-width:860px){
+  h1{font-size:36px}
+  .kpis{grid-template-columns:repeat(2,auto);gap:32px 40px}
+  .kpi b{font-size:60px}
+  .tiles,.two,.skill-top{grid-template-columns:1fr}
+  .cover{grid-template-columns:1fr 1fr}
+  .skill-card .sstats{grid-template-columns:repeat(3,auto);row-gap:16px}
+  .skill-strip{flex-direction:column;align-items:flex-start}
+  .panel{height:auto}
+  .open li{grid-template-columns:1fr;gap:4px}
+  .sstats{grid-template-columns:repeat(3,1fr);row-gap:14px}
+  .link{width:44px}
+}
+@media (forced-colors:active){
+  .bars .t.b span{background:Canvas;border:1px solid CanvasText}
+  .bars .t.a span,.link.fast::before{background:CanvasText}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-ok" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3.6 6.1 5.2 7.7 8.4 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-wait" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 .75a5.25 5.25 0 0 1 0 10.5z" fill="currentColor"/></symbol>
+</svg>
+<div class="glow" aria-hidden="true"></div>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><i aria-hidden="true"></i>性能优化报告</div>
+    <div class="meta">
+      <span>AI 视频制作平台</span>
+      <span class="pill">Mockup</span>
+      <button class="icon-btn" id="theme" type="button" aria-label="切换浅色或深色">
+        <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.75a6.25 6.25 0 0 1 0 12.5z" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 首屏：直接给收益 -->
+  <section class="hero">
+    <p class="eyebrow">D1 数据库 · R2 存储 · CDN 与缓存 ｜ 基线 11-06，复测 11-07</p>
+    <h1>重复访问大幅提速</h1>
+    <div class="kpis">
+      <div class="kpi"><b class="num">−65<small>%</small></b><span>4 个已实测场景平均耗时降幅</span></div>
+      <div class="kpi"><b class="num">−88<small>%</small></b><span>单项最高：缓存过期后打开页面，快 8.7 倍</span></div>
+      <div class="kpi"><b class="num">−100<small>%</small></b><span>命中缓存时的存储读取，2 次 → 0 次</span></div>
+    </div>
+    <div class="tiles">
+      <a class="tile" href="#area-d1">
+        <div class="head"><span>D1 数据库</span><span class="st warn"><svg><use href="#i-wait"/></svg>预估</span></div>
+        <div class="v num"><span class="hl">≈ −200 ms</span><small>每次读取</small></div>
+        <p>展示读取改走就近副本，写后不读到旧数据</p>
+      </a>
+      <a class="tile" href="#area-r2">
+        <div class="head"><span>R2 存储</span><span class="st good"><svg><use href="#i-ok"/></svg>已实测</span></div>
+        <div class="v num"><span class="hl">−43%</span><small>2 个场景平均</small></div>
+        <p>存储读取最多 −100%，公开视频快 2.5 倍</p>
+      </a>
+      <a class="tile" href="#area-cdn">
+        <div class="head"><span>CDN · 缓存 · HTML</span><span class="st good"><svg><use href="#i-ok"/></svg>已实测</span></div>
+        <div class="v num"><span class="hl">−87%</span><small>2 个场景平均</small></div>
+        <p>页面 2.9 s → 0.33 s，封面 1.2 s → 0.16 s</p>
+      </a>
+    </div>
+    <a class="skill-strip" href="#skill">
+      <span class="ss-l"><b>三项优化已封装成一个可复用 Skill</b><span class="skill-name">Cloudflare 全链路性能优化</span></span>
+      <span class="ss-r num"><span><b>18</b>个文件</span><span><b>6</b>步流程</span><span><b>33</b>项探针回归</span><span><b>24</b>项媒体验收</span><span aria-hidden="true">→</span></span>
+    </a>
+  </section>
+
+  <!-- 01 D1 数据库 -->
+  <section class="area" id="area-d1">
+    <div class="area-head"><h2>D1 数据库 <span class="st warn"><svg><use href="#i-wait"/></svg>预估</span></h2><p>读改走就近副本，写后保证读到新数据</p></div>
+    <div class="step"><i>1</i>收益</div>
+    <div class="gains" data-area="d1"></div>
+    <div class="two">
+      <div>
+        <div class="step"><i>2</i>为什么本来慢</div>
+        <div class="panel">
+          <h3>优化前：一次登录后的访问</h3>
+          <div class="path">
+            <div class="node">用户<small>已登录</small></div>
+            <div class="link">不走缓存</div>
+            <div class="node">边缘节点<small>渲染页面</small></div>
+            <div class="link slow">每次跨洋</div>
+            <div class="node hot">唯一主库<small>美国西部</small></div>
+          </div>
+          <ul class="reasons">
+            <li>只有一个主库在<b>美国西部</b>，所有读和写都打到它</li>
+            <li>登录后页面不能用共享页面缓存，每次都跨洋查库：首字节 <b>0.25–0.6 s</b>，最慢 <b>3.46 s</b></li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="step"><i>3</i>怎么做的</div>
+        <div class="panel">
+          <h3>优化后：一次登录后的访问</h3>
+          <div class="path">
+            <div class="node">用户<small>带书签</small></div>
+            <div class="link">请求级会话</div>
+            <div class="node">边缘节点<small>渲染页面</small></div>
+            <div class="link fast">展示读取</div>
+            <div class="node hot">就近副本<small>写入仍走主库</small></div>
+          </div>
+          <ul class="hows">
+            <li><b>统一入口</b>：页面、接口、流式回复、后台任务都从一个请求级数据库会话取库</li>
+            <li><b>读写分流</b>：展示读取走就近副本；写入和登录校验仍走主库</li>
+            <li><b>写后带书签</b>：刚写入的内容，下一次读取一定能看到</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 R2 存储 -->
+  <section class="area" id="area-r2">
+    <div class="area-head"><h2>R2 存储</h2><p>鉴权后缓存不可变文件，重复播放不再跨洋读存储</p></div>
+    <div class="step"><i>1</i>收益</div>
+    <div class="gains" data-area="r2"></div>
+    <div class="two">
+      <div>
+        <div class="step"><i>2</i>为什么本来慢</div>
+        <div class="panel">
+          <h3>优化前：一次播放</h3>
+          <div class="path">
+            <div class="node">用户<small>中国大陆</small></div>
+            <div class="link"></div>
+            <div class="node">边缘节点<small>鉴权</small></div>
+            <div class="link slow">跨洋 × 2</div>
+            <div class="node hot">存储桶<small>美国东部</small></div>
+          </div>
+          <ul class="reasons">
+            <li>存储桶在<b>美国东部</b>，每次播放、每次拖动都要跨洋</li>
+            <li>每次先查元数据再取内容，<b>一次请求读两次</b></li>
+            <li>没有文件缓存，同一段视频看第二遍还要重新读；私有成片同一段<b>每次约 1 s</b></li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="step"><i>3</i>怎么做的</div>
+        <div class="panel">
+          <h3>优化后：一次播放</h3>
+          <div class="path">
+            <div class="node">用户<small>中国大陆</small></div>
+            <div class="link fast">命中即回</div>
+            <div class="node hot">边缘节点<small>先鉴权再取缓存</small></div>
+            <div class="link cut">仅未命中</div>
+            <div class="node">存储桶<small>只读 1 次</small></div>
+          </div>
+          <ul class="hows">
+            <li><b>先鉴权、后缓存</b>：私有文件每次仍校验权限，但字节走边缘缓存</li>
+            <li><b>一次读取代替两次</b>：不再单独查元数据；公开文件的 HEAD、304 直接用已发布信息回答</li>
+            <li><b>按分段缓存</b>：拖动只读需要的那一段；整片缓存后任意分段直接截取</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 CDN · 缓存 · HTML -->
+  <section class="area" id="area-cdn">
+    <div class="area-head"><h2>CDN · 缓存 · HTML</h2><p>能复用的结果不再重复生成，页面和封面快 8 倍左右</p></div>
+    <div class="step"><i>1</i>收益</div>
+    <div class="gains" data-area="cdn"></div>
+    <div class="two">
+      <div>
+        <div class="step"><i>2</i>为什么本来慢</div>
+        <div class="panel">
+          <h3>优化前：一次打开首页</h3>
+          <div class="path">
+            <div class="node">用户<small>中国大陆</small></div>
+            <div class="link slow">节点漂移</div>
+            <div class="node">边缘节点<small>香港 / 伦敦</small></div>
+            <div class="link slow">每次重做</div>
+            <div class="node hot">完整渲染<small>查库 + 读存储</small></div>
+          </div>
+          <ul class="reasons">
+            <li>页面缓存只有 5 分钟，过期后第一个访问者要等<b>完整渲染 2.9 s</b></li>
+            <li>首页封面<b>完全不缓存</b>，每张每次都查库、跨洋读存储，0.7–1.7 s</li>
+            <li>语言跳转每次都走渲染，<b>0.24–0.9 s</b>；首屏还依赖第三方字体</li>
+            <li>主域名 4 次测量有 3 次落到伦敦节点，慢 <b>4–6 倍</b></li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="step"><i>3</i>怎么做的</div>
+        <div class="panel">
+          <h3>优化后：一次打开首页</h3>
+          <div class="path">
+            <div class="node">用户<small>浏览器缓存先挡</small></div>
+            <div class="link fast">命中即回</div>
+            <div class="node hot">边缘缓存<small>过期先给旧版</small></div>
+            <div class="link cut">后台刷新</div>
+            <div class="node">渲染<small>不再阻塞用户</small></div>
+          </div>
+          <ul class="hows">
+            <li><b>页面</b>：公开页面按白名单进边缘缓存，缓存键带版本号；过期先返回旧版、后台刷新</li>
+            <li><b>封面</b>：边缘缓存 + 浏览器长缓存，重复打开不发网络请求</li>
+            <li><b>跳转与字体</b>：跳转提到渲染之前；西文字体自托管，中文用系统字体</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 封装成 Skill -->
+  <section class="area" id="skill">
+    <div class="area-head"><h2>封装成一个可复用 Skill <span class="st good"><svg><use href="#i-ok"/></svg>已打包</span></h2><p>三项优化的做法、模板和验收全部沉淀下来，同类站点照着做就能复现</p></div>
+    <div class="skill-card">
+      <div class="skill-top">
+        <div>
+          <span class="skill-name">Cloudflare 全链路性能优化</span>
+          <p>一个 Skill 覆盖网络入口、数据库、存储、页面缓存和前端资源；复制目录即可安装，不含本站域名、账户和密钥</p>
+        </div>
+        <div class="sstats">
+          <div><b class="num">18</b><span>个文件</span></div>
+          <div><b class="num">6</b><span>步流程</span></div>
+          <div><b class="num">5</b><span>类瓶颈</span></div>
+          <div><b class="num">33</b><span>项探针回归</span></div>
+          <div><b class="num">24</b><span>项媒体验收</span></div>
+        </div>
+      </div>
+      <div class="cover">
+        <div><h3>D1</h3><ul><li>完整 SOP，附实施与验收参考</li><li>请求级数据库路由、写后书签两份可移植模板</li></ul></div>
+        <div><h3>R2</h3><ul><li>先鉴权后缓存、分段与条件请求方案</li><li>24 项媒体验收矩阵</li></ul></div>
+        <div><h3>CDN · 缓存 · HTML</h3><ul><li>网络入口、页面缓存、前端资源三份指南</li><li>白名单 + 版本缓存键 + 后台刷新</li></ul></div>
+        <div><h3>测量与发布</h3><ul><li>只读测量探针，33 项隔离回归</li><li>执行记录模板、发布与回滚清单</li></ul></div>
+      </div>
+      <ol class="flow"><li>建立边界</li><li>测基线</li><li>按瓶颈选方案</li><li>最小完整实施</li><li>验收后发布</li><li>交付可核实结论</li></ol>
+    </div>
+  </section>
+
+  <!-- 规模价值 -->
+  <section class="block">
+    <h2>规模价值</h2>
+    <div class="card scale-card">
+      <h3>收益随访问量放大</h3>
+      <div class="gains" data-area="scale" style="margin-top:16px"></div>
+      <ul class="facts">
+        <li>每次打开首屏：第三方字体请求 0 次</li>
+        <li>每次页面缓存过期：访问者不再等完整渲染</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 还没解决 -->
+  <section class="block">
+    <h2>还没解决</h2>
+    <ul class="card open">
+      <li><b>主域名线路漂移</b><span>同一批封面请求：主域名 <b class="num">1.27–1.74 s</b>，区域入口 <b class="num">0.15–0.23 s</b>，相差约 8 倍</span><em>下一步：从线路与区域中转入手</em></li>
+      <li><b>首次冷访问</b><span>新节点的首个请求、发版后的首个页面请求仍要回源</span><em></em></li>
+    </ul>
+    <details class="data">
+      <summary>查看全部数据</summary>
+      <div class="card"><table class="data" id="table"></table></div>
+    </details>
+  </section>
+
+  <section class="method">
+    <h2>测量口径</h2>
+    <ul>
+      <li>基线 11-06、复测 11-07，同一台机器，大陆网络下命令行与浏览器两条线路；少量样本，未做并发与 P95。</li>
+      <li>区间取中点，多次命中取中位数；平均为已实测场景降幅的简单平均；倍数 = 优化前 ÷ 优化后。</li>
+      <li>公开视频以今天的首次未命中近似优化前（优化前每次都走这条路，还多 1 次读取），偏保守；私有成片前后所在节点不同（香港 → 新加坡）；封面前后入口不同，降幅看量级。</li>
+      <li>D1 为预估：按大陆经香港到美国西部单次往返 150–250 ms，估算每次展示读取改走就近副本后省下的时间；登录校验和写入仍走主库；不计入实测平均。</li>
+    </ul>
+  </section>
+
+  <footer><span>AI 视频制作平台 · 性能优化报告</span><span>Mockup · 2026-11-07</span></footer>
+</div>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+// 收益卡数据：b = 优化前、a = 优化后（毫秒或次数）；big 为卡片主数字；text 卡只有结论没有对比条
+const GAINS = {
+  d1: [
+    { name: '每次展示读取', text: true, hl: true, big: '≈ −200 ms', sub: '少一次跨洋往返，预估',
+      tip: '优化前每次展示读取都要到美国西部主库；优化后读就近副本<br>按大陆经香港到美国西部单次往返 150–250 ms 估算；登录校验和写入仍走主库' },
+    { name: '展示读取的去向', text: true, big: '就近副本', sub: '原来全部到美国西部主库',
+      tip: '页面、接口、流式回复和后台任务统一走请求级数据库会话' },
+    { name: '写后读取', text: true, big: '不读旧数据', sub: '书签传递、并发隔离验收通过',
+      tip: '写入后带书签，下一次读取等副本追上再返回；线上页面正常' },
+    { name: '回归验收', text: true, big: '81 项', sub: '端到端通过，全量单测通过',
+      tip: '默认端到端 50 项、工作台与书签专项 31 项；真实运行时验收通过' },
+  ],
+  r2: [
+    { name: '每次请求的存储读取', b: 2, a: 1, bt: '2 次', at: '1 次', big: '−50%', sub: '2 次 → 1 次，缓存未命中时',
+      count: true, tip: '优化前先查元数据再取内容；优化后只取一次<br>来自真实运行时测试的调用计数' },
+    { name: '重复命中的存储读取', b: 2, a: 0, bt: '2 次', at: '0 次', big: '−100%', sub: '2 次 → 0 次，命中缓存时',
+      count: true, tip: '同一节点重复读取同一分段，直接走缓存<br>公开文件的 HEAD、304 也是 0 次读取' },
+    { name: '公开视频分段 · 重复播放', b: 473, a: 189.5, bt: '473 ms', at: '185–194 ms', big: '−60%', sub: '快 2.5 倍',
+      tip: '64 KB 分段首字节<br>以首次未命中近似优化前（优化前每次都走这条路，且多 1 次读取），偏保守' },
+    { name: '私有成片分段 · 重复播放', b: 1000, a: 736, bt: '约 1 s', at: '0.74 s', big: '−26%', sub: '7 次命中取中位数',
+      tip: '优化后 7 次命中 0.35–1.33 s<br>前后所在节点不同（香港 → 新加坡），只能看近似' },
+  ],
+  cdn: [
+    { name: '缓存过期后打开页面', b: 2900, a: 334.7, bt: '2.9 s', at: '0.33 s', big: '−88%', sub: '快 8.7 倍',
+      tip: '优化前：缓存过期后首个请求要等完整渲染<br>优化后：先返回旧版、后台刷新；之后命中 0.18–0.28 s<br>各 1 个样本' },
+    { name: '首页封面首字节', b: 1200, a: 155, bt: '0.7–1.7 s', at: '0.14–0.17 s', big: '−87%', sub: '快 7.7 倍',
+      tip: '区间取中点；发布前另测 2.3–3.2 s，未计入<br>前后入口不同，降幅看量级' },
+    { name: '浏览器重复打开封面', b: null, bt: '每次完整请求', at: '11–55 ms', big: '0 B', sub: '网络传输',
+      tip: '优化前封面禁止缓存，每次重复打开都是一次完整请求<br>优化后直接读浏览器缓存，传输量为 0<br>优化前没有单独对照，不计入平均' },
+  ],
+  scale: [
+    { name: '每 1,000 次媒体请求 · 未命中', b: 2000, a: 1000, bt: '2,000 次', at: '1,000 次', big: '−50%', sub: '存储读取 2,000 → 1,000 次',
+      count: true, tip: '按每次请求的读取次数折算，不是线上流量统计' },
+    { name: '每 1,000 次媒体请求 · 命中', b: 2000, a: 0, bt: '2,000 次', at: '0 次', big: '−100%', sub: '存储读取 2,000 → 0 次',
+      count: true, tip: '按每次请求的读取次数折算，不是线上流量统计' },
+  ],
+};
+
+const TIPS = {};
+const pct = g => Math.round((1 - g.a / g.b) * 100);
+function bars(g) {
+  if (g.text) return '';
+  // 没有可比的优化前数值时只列文字，不画条
+  if (g.b == null) return `<div class="bars"><span class="k">优化前</span><span class="n wide">${g.bt}</span><span class="k">优化后</span><span class="n wide">${g.at}</span></div>`;
+  // 优化前为 100%，优化后按比例；为 0 时不画最小宽度
+  const w = (g.a / g.b) * 100;
+  return `<div class="bars">
+    <span class="k">优化前</span><span class="t b"><span style="width:100%"></span></span><span class="n num">${g.bt}</span>
+    <span class="k">优化后</span><span class="t a"><span style="width:${w}%${g.a === 0 ? ';min-width:0' : ''}"></span></span><span class="n num">${g.at}</span>
+  </div>`;
+}
+for (const [area, list] of Object.entries(GAINS)) {
+  document.querySelector(`.gains[data-area="${area}"]`).innerHTML = list.map((g, i) => {
+    const key = `${area}${i}`;
+    const rows = g.text ? '' : `<div class="r"><span><i style="background:var(--before)"></i>优化前</span><b>${g.bt}</b></div>
+      <div class="r"><span><i style="background:var(--after)"></i>优化后</span><b>${g.at}</b></div>`;
+    TIPS[key] = `<h5>${g.name}</h5>${rows}<p>${g.tip}</p>`;
+    return `<div class="gain${g.text && !g.hl ? ' text' : ''}" tabindex="0" data-tip="${key}">
+      <div class="lbl">${g.name}</div>
+      <div class="big num${g.text && !g.hl ? '' : ' hl'}">${g.big}<small>${g.sub}</small></div>${bars(g)}
+    </div>`;
+  }).join('');
+}
+
+// 全部数据表：同一份数据，供不看图的读者核对
+const rows = [['R2 存储', GAINS.r2], ['CDN · 缓存 · HTML', GAINS.cdn]].flatMap(([d, list]) => list.map(g => [d, g]));
+const change = g => g.b == null ? '传输 0' : `−${pct(g)}%`;
+document.getElementById('table').innerHTML = `<thead><tr><th>方向</th><th>场景</th><th class="n">优化前</th><th class="n">优化后</th><th class="n">变化</th></tr></thead>
+  <tbody><tr><td>D1 数据库</td><td>每次展示读取</td><td class="n">到美国西部主库</td><td class="n">就近副本</td><td class="n">预估 ≈ −200 ms</td></tr>
+  ${rows.map(([d, g]) => `<tr><td>${d}</td><td>${g.name}</td><td class="n">${g.bt}</td><td class="n">${g.at}</td><td class="n">${change(g)}</td></tr>`).join('')}</tbody>`;
+
+// 悬停与键盘聚焦共用一个提示层
+const tip = document.getElementById('tip');
+function place(px, py) {
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let nx = px + 14, ny = py + 16;
+  if (nx + w > innerWidth - 8) nx = px - w - 14;
+  if (ny + h > innerHeight - 8) ny = py - h - 16;
+  tip.style.transform = `translate(${Math.max(8, nx)}px, ${Math.max(8, ny)}px)`;
+}
+function show(el, px, py) { tip.innerHTML = TIPS[el.dataset.tip] || ''; tip.classList.add('on'); place(px, py); }
+function hide() { tip.classList.remove('on'); }
+document.addEventListener('pointerover', e => { const el = e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); });
+document.addEventListener('pointermove', e => { if (e.target.closest('[data-tip]') && tip.classList.contains('on')) place(e.clientX, e.clientY); });
+document.addEventListener('pointerout', e => { const el = e.target.closest('[data-tip]'); if (el && !el.contains(e.relatedTarget)) hide(); });
+document.addEventListener('pointerdown', hide);
+addEventListener('scroll', hide, { passive: true });
+document.addEventListener('focusin', e => {
+  const el = e.target.closest('[data-tip]');
+  if (!el) return hide();
+  const r = el.getBoundingClientRect();
+  show(el, r.left + r.width * 0.55, r.top + r.height * 0.6);
+});
+document.addEventListener('focusout', hide);
+
+// 深浅色切换：深色为默认
+document.getElementById('theme').addEventListener('click', () => {
+  const root = document.documentElement;
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+</script>
+</body>
+</html>
