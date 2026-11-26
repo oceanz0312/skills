@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent 降本优化报告 · AI 视频制作平台</title>
+<style>
+/* 令牌沿用产品设计系统与性能优化报告：深色默认、品牌珊瑚橙；三阶段色是同一色相的有序色阶，已用 dataviz 校验（深色底 #1a1a1a、浅色底 #ffffff） */
+:root{
+  --font:-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif;
+  --mark:#ff6b3d;
+}
+[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111111;--surface:#1a1a1a;--raised:#242424;
+  --fg:#f5f5f5;--fg-2:#d4d4d1;--muted:#a3a3a3;
+  --line:rgb(255 255 255 / .08);--line-strong:rgb(255 255 255 / .14);
+  --brand:#ff6b3d;--brand-soft:rgb(255 107 61 / .14);
+  --before:#a34a2c;--after:#ff6b3d;
+  --s1:#7a3a24;--s2:#c4552f;--s3:#ff8a5c;
+  --good:#4ade80;--warn:#fbbf24;
+  --glow:rgb(255 107 61 / .13);--shadow:0 12px 32px rgb(0 0 0 / .45);
+}
+[data-theme="light"]{
+  color-scheme:light;
+  --bg:#fafaf9;--surface:#ffffff;--raised:#f2f2f0;
+  --fg:#141414;--fg-2:#2c2c2c;--muted:#545454;
+  --line:rgb(0 0 0 / .08);--line-strong:rgb(0 0 0 / .14);
+  --brand:#c0441c;--brand-soft:rgb(255 107 61 / .12);
+  --before:#f0916e;--after:#c0441c;
+  --s1:#f0a184;--s2:#d9603a;--s3:#a8391a;
+  --good:#16a34a;--warn:#b45309;
+  --glow:rgb(255 107 61 / .11);--shadow:0 12px 32px rgb(0 0 0 / .12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{position:relative;font:15px/1.6 var(--font);color:var(--fg);background:var(--bg);-webkit-font-smoothing:antialiased;min-height:100vh}
+.glow{position:absolute;inset:0 0 auto;height:620px;background:radial-gradient(1100px 560px at 12% -140px,var(--glow),transparent 70%);pointer-events:none}
+.num{font-variant-numeric:tabular-nums}
+.wrap{position:relative;max-width:1080px;margin:0 auto;padding:0 24px}
+b{font-weight:600}
+
+/* 顶栏 */
+.top{display:flex;align-items:center;justify-content:space-between;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+.brand i{width:16px;height:16px;border-radius:5px;background:var(--mark)}
+.meta{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted)}
+.pill{font-size:12px;line-height:20px;padding:0 8px;border-radius:999px;border:1px solid var(--line-strong);color:var(--fg-2)}
+.icon-btn{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--fg-2);cursor:pointer}
+.icon-btn:hover{background:var(--raised)}
+
+/* 首屏 */
+.hero{padding:52px 0 0}
+.eyebrow{font-size:13px;color:var(--muted)}
+h1{font-size:48px;line-height:1.12;font-weight:600;letter-spacing:-.025em;margin-top:10px}
+.kpis{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:72px;margin-top:44px}
+.kpi b{display:block;font-size:88px;line-height:.9;letter-spacing:-.05em;color:var(--brand)}
+.kpi b small{font-size:.46em;letter-spacing:-.02em;margin-left:4px}
+.kpi span{display:block;margin-top:16px;font-size:14px;color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:48px}
+/* 大白话：原来 → 为什么费钱 → 现在，给不了解技术的读者 */
+.plain{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:48px}
+.plain>div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px 22px}
+.plain>div.now{border-color:rgb(255 107 61 / .45)}
+.plain h2{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.plain h2 span{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:2px}
+.plain .reasons,.plain .hows{margin-top:10px}
+.plain .old li::before{background:var(--muted)}
+.tile{display:block;color:inherit;text-decoration:none;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;transition:border-color .15s}
+.tile:hover{border-color:var(--line-strong)}
+.tile .head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--fg-2)}
+.tile .v{font-size:40px;line-height:46px;font-weight:600;letter-spacing:-.03em;margin-top:16px}
+.tile .v small{display:block;font-size:13px;line-height:1.4;font-weight:400;letter-spacing:0;color:var(--muted);margin-top:2px}
+.tile p{margin-top:8px;font-size:13px;color:var(--fg-2)}
+.hl{color:var(--brand)}
+.skill-strip{display:flex;align-items:center;justify-content:space-between;gap:16px 24px;margin-top:12px;padding:16px 20px;border-radius:14px;background:var(--surface);border:1px solid rgb(255 107 61 / .45);color:inherit;text-decoration:none;transition:border-color .15s}
+.skill-strip:hover{border-color:var(--brand)}
+.ss-l{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;font-size:15px}
+.ss-r{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 18px;font-size:13px;color:var(--muted)}
+.ss-r b{font-size:22px;letter-spacing:-.02em;color:var(--brand);margin-right:4px}
+.skill-name{display:inline-block;font-size:13px;padding:1px 8px;border-radius:6px;background:var(--brand-soft);color:var(--fg)}
+
+/* 数据来源标记：实测为绿勾，拟合 / 重算 / 折算为半圆，始终带文字 */
+.st{display:inline-flex;align-items:center;gap:5px;font-size:12px;line-height:20px;color:var(--fg-2);padding:0 8px 0 6px;border-radius:999px;background:var(--raised);white-space:nowrap;font-weight:400;letter-spacing:0}
+.st svg{width:12px;height:12px;flex:none}
+.st.good svg{color:var(--good)}
+.st.warn svg{color:var(--warn)}
+
+/* 每一项：收益 → 为什么本来贵 → 怎么做 */
+.area{margin-top:96px}
+.area-head h2{font-size:30px;line-height:1.2;font-weight:600;letter-spacing:-.02em}
+.area-head p{font-size:17px;color:var(--fg-2);margin-top:8px}
+.step{display:flex;align-items:center;gap:10px;margin:32px 0 12px;font-size:13px;color:var(--muted)}
+.step i{font-style:normal;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--brand-soft);color:var(--fg);font-size:11px;font-weight:600}
+
+/* 收益卡：前后两档按较大值自成刻度 */
+.gains{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.gain{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;outline:none}
+.gain:hover,.gain:focus-visible{border-color:var(--line-strong)}
+.gain .lbl{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--fg-2)}
+.gain .big{font-size:44px;line-height:1;font-weight:600;letter-spacing:-.035em;margin-top:14px}
+.gain .big small{display:block;font-size:13px;line-height:1.4;font-weight:400;letter-spacing:0;color:var(--muted);margin-top:8px}
+.gain.text .big{font-size:30px;line-height:44px}
+.bars{display:grid;grid-template-columns:44px 1fr auto;align-items:center;column-gap:10px;row-gap:4px;margin-top:16px;font-size:12px}
+.bars .k{color:var(--muted)}
+.bars .t{height:8px;position:relative}
+.bars .t span{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0;min-width:2px}
+.bars .t.b span{background:var(--before)}
+.bars .t.a span{background:var(--after)}
+.bars .n{text-align:right;color:var(--fg-2);white-space:nowrap}
+
+/* 对比面板：改之前 / 改之后 */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px 22px;height:calc(100% - 64px)}
+.panel h3{font-size:13px;font-weight:500;color:var(--muted)}
+.path{display:flex;align-items:stretch;margin-top:16px}
+.node{flex:1;min-width:0;text-align:center;padding:10px 6px;border-radius:10px;background:var(--raised);font-size:13px;line-height:1.35}
+.node small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.node.hot{box-shadow:inset 0 0 0 1px var(--brand)}
+.link{flex:none;width:64px;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;line-height:1.3;color:var(--muted);text-align:center}
+.link::before{content:"";width:100%;height:2px;background:var(--line-strong);border-radius:1px}
+.link.slow::before{background:var(--before);height:3px}
+.link.fast::before{background:var(--after);height:3px}
+.reasons,.hows{list-style:none;margin-top:16px}
+.reasons li,.hows li{position:relative;padding-left:18px;font-size:14px;color:var(--fg-2);margin-top:8px;line-height:1.6}
+.reasons li::before,.hows li::before{content:"";position:absolute;left:3px;top:.62em;width:6px;height:6px;border-radius:50%}
+.reasons li::before{background:var(--before)}
+.hows li::before{background:var(--after)}
+.reasons b,.hows b{color:var(--fg)}
+
+/* 整片成本：三个阶段按片长对比 */
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--fg-2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:16px}
+.tier{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 20px 18px}
+.tier h3{display:flex;justify-content:space-between;align-items:baseline;font-size:15px;font-weight:600}
+.tier h3 span{font-size:13px;font-weight:400;color:var(--muted)}
+.tier h3 .hl{font-weight:600;color:var(--brand)}
+.sbars{display:grid;grid-template-columns:72px 1fr 92px;align-items:center;column-gap:10px;row-gap:8px;margin-top:14px;font-size:12px}
+.sbars .k{color:var(--muted)}
+.sbars .t{height:10px;position:relative;outline:none;border-radius:2px}
+.sbars .t span{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0}
+.sbars .n{text-align:right;color:var(--fg-2);white-space:nowrap}
+.sbars .none{grid-column:2/4;color:var(--muted)}
+.c1{background:var(--s1)}.c2{background:var(--s2)}.c3{background:var(--s3)}
+
+/* 构成：单一色相的占比条 */
+.mix{padding:8px 24px 18px}
+.mix-row{display:grid;grid-template-columns:200px 1fr 48px;align-items:center;gap:16px;padding:10px 0;border-top:1px solid var(--line);font-size:14px;color:var(--fg-2);outline:none}
+.mix-row:first-child{border-top:0}
+.mix-row small{display:block;font-size:12px;color:var(--muted)}
+.mix-row .t{height:10px}
+.mix-row .t span{display:block;height:100%;border-radius:0 4px 4px 0;background:var(--after)}
+.mix-row .n{text-align:right;color:var(--fg)}
+
+/* 底部区块 */
+.block{margin-top:96px}
+.block h2{font-size:22px;font-weight:600;letter-spacing:-.01em;margin-bottom:6px}
+.block .lead{font-size:14px;color:var(--muted);margin-bottom:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.scale-card{padding:22px 24px 24px}
+.scale-card h3{font-size:17px;font-weight:600}
+.scale-card .gain{background:var(--raised);border-color:transparent}
+.skill-card{background:var(--surface);border:1px solid rgb(255 107 61 / .45);border-radius:16px;padding:28px;margin-top:24px}
+.skill-top{display:grid;grid-template-columns:1fr auto;gap:24px 40px;align-items:end}
+.skill-top p{margin-top:12px;font-size:14px;color:var(--fg-2);max-width:420px}
+.sstats{display:grid;grid-template-columns:repeat(5,auto);gap:32px}
+.sstats b{display:block;font-size:44px;line-height:1;letter-spacing:-.03em;color:var(--brand)}
+.sstats span{display:block;margin-top:6px;font-size:12px;color:var(--muted)}
+.cover{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:28px}
+.cover>div{background:var(--raised);border-radius:12px;padding:16px 18px}
+.cover h3{font-size:14px;font-weight:600}
+.cover ul{list-style:none;margin-top:6px}
+.cover li{font-size:13px;color:var(--fg-2);margin-top:6px;line-height:1.55}
+.flow{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;counter-reset:s}
+.flow li{counter-increment:s;display:flex;align-items:center;gap:6px;font-size:13px;line-height:20px;padding:3px 10px 3px 4px;border-radius:999px;background:var(--raised);color:var(--fg-2)}
+.flow li::before{content:counter(s);display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--brand-soft);color:var(--fg);font-size:11px;font-weight:600}
+.facts{list-style:none;margin-top:16px}
+.facts li{position:relative;padding-left:16px;font-size:14px;color:var(--fg-2);margin-top:8px}
+.facts li::before{content:"";position:absolute;left:2px;top:.68em;width:5px;height:5px;border-radius:50%;background:var(--brand)}
+.open{list-style:none}
+.open li{display:grid;grid-template-columns:170px 1fr 260px;gap:24px;padding:16px 24px;border-top:1px solid var(--line);font-size:14px;color:var(--fg-2)}
+.open li:first-child{border-top:0}
+.open b{color:var(--fg)}
+.open em{font-style:normal;color:var(--muted)}
+details.data{margin-top:12px}
+details.data summary{cursor:pointer;font-size:13px;color:var(--muted);padding:6px 0}
+table.data{width:100%;border-collapse:collapse;font-size:14px}
+table.data th{font-weight:500;color:var(--muted);text-align:left;font-size:12px;padding:12px 16px 10px;border-bottom:1px solid var(--line)}
+table.data td{padding:11px 16px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--fg-2)}
+table.data td:first-child{color:var(--fg)}
+table.data tr:last-child td{border-bottom:0}
+table.data .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.data .now{color:var(--fg);font-weight:600}
+.method{margin-top:64px;padding:20px 0 0;border-top:1px solid var(--line)}
+.method h2{font-size:14px;color:var(--fg-2)}
+.method ul{list-style:none;margin-top:8px}
+.method li{font-size:13px;color:var(--muted);margin-top:4px}
+footer{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:40px 0 48px}
+
+/* 悬停提示 */
+.tip{position:fixed;left:0;top:0;z-index:20;pointer-events:none;background:var(--raised);border:1px solid var(--line-strong);border-radius:10px;padding:10px 12px;font-size:13px;width:max-content;max-width:300px;box-shadow:var(--shadow);opacity:0;transition:opacity .1s}
+.tip.on{opacity:1}
+.tip h5{font-size:13px;font-weight:600;margin-bottom:6px}
+.tip .r{display:flex;justify-content:space-between;gap:20px;color:var(--fg-2);line-height:1.7}
+.tip .r i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.tip .r b{color:var(--fg);font-variant-numeric:tabular-nums}
+.tip p{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.55}
+
+@media (max-width:860px){
+  h1{font-size:36px}
+  .kpis{grid-template-columns:repeat(2,auto);gap:32px 40px}
+  .kpi b{font-size:60px}
+  .tiles{grid-template-columns:1fr 1fr}
+  .two,.skill-top,.plain{grid-template-columns:1fr}
+  .cover{grid-template-columns:1fr 1fr}
+  .sstats{grid-template-columns:repeat(3,auto);row-gap:16px}
+  .skill-strip{flex-direction:column;align-items:flex-start}
+  .panel{height:auto}
+  .open li{grid-template-columns:1fr;gap:4px}
+  .mix-row{grid-template-columns:120px 1fr 44px}
+  .link{width:40px}
+}
+@media (forced-colors:active){
+  .bars .t.b span,.c1{background:Canvas;border:1px solid CanvasText}
+  .bars .t.a span,.c3,.mix-row .t span,.link.fast::before{background:CanvasText}
+  .c2{background:GrayText}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-ok" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3.6 6.1 5.2 7.7 8.4 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-wait" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 .75a5.25 5.25 0 0 1 0 10.5z" fill="currentColor"/></symbol>
+</svg>
+<div class="glow" aria-hidden="true"></div>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><i aria-hidden="true"></i>Agent 降本优化报告</div>
+    <div class="meta">
+      <span>AI 视频制作平台</span>
+      <span class="pill">已脱敏</span>
+      <button class="icon-btn" id="theme" type="button" aria-label="切换浅色或深色">
+        <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.75a6.25 6.25 0 0 1 0 12.5z" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 首屏：直接给收益 -->
+  <section class="hero">
+    <p class="eyebrow">视频制作 Agent · 模型调用成本 ｜ 72 部真实成片，按官方价目计</p>
+    <h1>同样一部片子，模型成本降了六到八成</h1>
+    <div class="kpis">
+      <div class="kpi"><b class="num">−79<small>%</small></b><span>30 秒片整片：约 $2 → $0.42</span></div>
+      <div class="kpi"><b class="num">−61<small>%</small></b><span>1 分钟片整片：约 $1.65 → $0.65</span></div>
+      <div class="kpi"><b class="num">−56<small>%</small></b><span>每个镜头的模型调用：7.9 → 3.5 次</span></div>
+    </div>
+    <!-- 大白话版：只讲核心要点 -->
+    <div class="plain">
+      <div>
+        <h2>原来是这样做的<span>一部片子怎么做出来</span></h2>
+        <ul class="reasons old">
+          <li>AI 先当「导演」写分镜，再把片子切成很多小镜头，每个镜头单独交给 AI 去画</li>
+          <li>一部 30 秒的片子会被切成 <b>10 个左右</b>的小镜头，每个只有 3 秒</li>
+          <li>每画一个镜头，AI 要来回<b>问答 8 次左右</b>：自己搭环境、写画面、出片、检查、再多聊几句</li>
+        </ul>
+      </div>
+      <div>
+        <h2>为什么费钱<span>AI 按读写的字数收费</span></h2>
+        <ul class="reasons">
+          <li>每来回一次，AI 都要<b>把整本说明书重读一遍</b>，读一遍就付一遍钱</li>
+          <li>镜头切得越碎，这笔「开工费」付得越多：<b>10 个镜头就付 10 次</b></li>
+          <li>说明书本来能让 AI「记住」、以后便宜复读，但原来<b>按贵的档位记</b>，而且每个镜头<b>各记各的</b></li>
+          <li>导演写超了被打回、<b>整份重写</b>；注定做不出来的风格也<b>照样开工</b>，钱白花</li>
+        </ul>
+      </div>
+      <div class="now">
+        <h2>现在这样做<span>同一部 30 秒片子：约 $2 → $0.42</span></h2>
+        <ul class="hows">
+          <li><b>镜头拉长</b>：每个镜头至少 15 秒，30 秒的片子最多 2 个镜头，开工费少付好几次</li>
+          <li><b>杂活交给程序</b>：搭环境这类固定步骤由平台先做好，AI 只管画，来回从 8 次降到 3.5 次</li>
+          <li><b>说明书只记一份</b>：同一部片子的所有镜头共用，而且按便宜的档位记</li>
+          <li><b>导演一次写对</b>：字数、时长这些硬要求提前讲清楚，不再被打回重写</li>
+          <li><b>检查交给程序，做不成的不开工</b>：画面动没动由程序量；做不出来的风格开工前就拒绝</li>
+        </ul>
+      </div>
+    </div>
+    <div class="tiles">
+      <a class="tile" href="#area-shot">
+        <div class="head"><span>镜头切法</span><span class="st good"><svg><use href="#i-ok"/></svg>实测</span></div>
+        <div class="v num"><span class="hl">6.1×</span><small>每个镜头的时长</small></div>
+        <p>3.1 秒 → 19 秒，固定开销少付很多次</p>
+      </a>
+      <a class="tile" href="#area-flow">
+        <div class="head"><span>制作流程</span><span class="st good"><svg><use href="#i-ok"/></svg>实测</span></div>
+        <div class="v num"><span class="hl">−57%</span><small>每镜调用次数</small></div>
+        <p>8.2 → 3.5 次，程序性步骤交给平台</p>
+      </a>
+      <a class="tile" href="#area-cache">
+        <div class="head"><span>缓存</span><span class="st good"><svg><use href="#i-ok"/></svg>实测</span></div>
+        <div class="v num"><span class="hl">−13%</span><small>同一份分镜 A/B</small></div>
+        <p>1 小时缓存写入从占 61% 降到 0</p>
+      </a>
+      <a class="tile" href="#area-guard">
+        <div class="head"><span>导演 · 检查 · 止损</span><span class="st good"><svg><use href="#i-ok"/></svg>实测</span></div>
+        <div class="v num"><span class="hl">−56%</span><small>导演每部成本</small></div>
+        <p>$0.52 → $0.23，检查截断 51 次 → 0</p>
+      </a>
+    </div>
+    <a class="skill-strip" href="#skill">
+      <span class="ss-l"><b>整套做法已封装成一个可复用 Skill</b><span class="skill-name">视频制作 Agent 降成本 SOP</span></span>
+      <span class="ss-r num"><span><b>5</b>步流程</span><span><b>7</b>类杠杆</span><span><b>9</b>项动作有证据</span><span><b>72</b>部成片实测</span><span aria-hidden="true">→</span></span>
+    </a>
+  </section>
+
+  <!-- 整片成本 -->
+  <section class="area" id="area-total">
+    <div class="area-head"><h2>整片成本：同样的片长，三个阶段</h2><p>整片 = 导演出分镜 + 制作 + 配音；现在成本基本和片长成正比</p></div>
+    <div class="step"><i>1</i>按片长对比</div>
+    <div class="legend" aria-label="图例">
+      <span><i class="c1"></i>原始流程</span><span><i class="c2"></i>缓存改造后</span><span><i class="c3"></i>现在</span>
+    </div>
+    <div class="tiers" id="tiers"></div>
+    <div class="step"><i>2</i>拆到每个镜头</div>
+    <div class="card"><table class="data" id="pershot"></table></div>
+    <ul class="facts">
+      <li>原始流程：每部制作成本 ≈ $0.50 + $0.147 × 镜头数（拟合，R² 0.79）。钱跟着镜头切法走，和片长几乎无关（按秒 R² 只有 0.03）</li>
+      <li>现在：整片 ≈ $0.18 + $0.0075 × 秒（拟合，R² 0.87），同样片长上下浮动约 ±25%</li>
+    </ul>
+  </section>
+
+  <!-- 镜头切法 -->
+  <section class="area" id="area-shot">
+    <div class="area-head"><h2>镜头切法</h2><p>每段会话都有一笔和长度无关的固定开销，镜头切得越碎，付的次数越多</p></div>
+    <div class="step"><i>1</i>收益</div>
+    <div class="gains" data-area="shot"></div>
+    <div class="two">
+      <div>
+        <div class="step"><i>2</i>为什么本来贵</div>
+        <div class="panel">
+          <h3>改之前：一部 30 秒的片子</h3>
+          <div class="path">
+            <div class="node">30 秒片<small>没有镜头规则</small></div>
+            <div class="link slow">切碎</div>
+            <div class="node">约 10 个镜头<small>每镜约 3 秒</small></div>
+            <div class="link slow">× 10</div>
+            <div class="node hot">固定开销<small>付 10 次</small></div>
+          </div>
+          <ul class="reasons">
+            <li>固定开销包括<b>读说明、搭环境、首次写缓存、检查</b>，和镜头长短无关</li>
+            <li>导演没有镜头规则，10–30 秒的片子被切成 <b>3–22 个镜头</b></li>
+            <li>拟合下来，制作成本跟<b>镜头数</b>走（R² 0.79），不跟片长走（R² 0.03）</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="step"><i>3</i>怎么做的</div>
+        <div class="panel">
+          <h3>改之后：一部 30 秒的片子</h3>
+          <div class="path">
+            <div class="node">30 秒片<small>固定档位</small></div>
+            <div class="link fast">长镜头</div>
+            <div class="node">最多 2 个镜头<small>每镜 ≥ 15 秒</small></div>
+            <div class="link fast">× 2</div>
+            <div class="node hot">固定开销<small>只付 2 次</small></div>
+          </div>
+          <ul class="hows">
+            <li><b>每镜至少 15 秒、每 15 秒最多一镜</b>：保存分镜时硬校验，不合格退回重排，限定次数</li>
+            <li><b>片长改成固定档位</b>：用户不再任意填秒数</li>
+            <li><b>示例也按长镜头写</b>：否则导演会照着示例切碎</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 制作流程 -->
+  <section class="area" id="area-flow">
+    <div class="area-head"><h2>制作流程</h2><p>程序性步骤交给平台，模型只负责创作；每多一步，就多一次带着全部上下文的调用</p></div>
+    <div class="step"><i>1</i>收益</div>
+    <div class="gains" data-area="flow"></div>
+    <div class="two">
+      <div>
+        <div class="step"><i>2</i>为什么本来贵</div>
+        <div class="panel">
+          <h3>改之前：制作一个镜头</h3>
+          <div class="path">
+            <div class="node">模型搭环境<small>建目录、跑脚本</small></div>
+            <div class="link slow">多轮</div>
+            <div class="node">写代码、渲染<small>分开调用</small></div>
+            <div class="link slow">多轮</div>
+            <div class="node hot">交段后再聊<small>约 8 次调用</small></div>
+          </div>
+          <ul class="reasons">
+            <li>搭目录、跑风格准备脚本这类<b>固定步骤也由模型来做</b></li>
+            <li>写文件和渲染是两个工具，<b>改一次就要多来回几轮</b></li>
+            <li>段交上去以后会话不结束，模型还会总结、追问；每镜头 <b>7.9–8.2 次调用</b></li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="step"><i>3</i>怎么做的</div>
+        <div class="panel">
+          <h3>改之后：制作一个镜头</h3>
+          <div class="path">
+            <div class="node">平台准备好<small>上下文进首条消息</small></div>
+            <div class="link fast">一次</div>
+            <div class="node">写 + 渲染<small>一个工具</small></div>
+            <div class="link fast">交段</div>
+            <div class="node hot">会话结束<small>约 3.5 次调用</small></div>
+          </div>
+          <ul class="hows">
+            <li><b>平台先做准备</b>：搭目录、跑准备脚本，草稿和这一段要的上下文直接写进第一条消息</li>
+            <li><b>写文件 + 渲染合成一个工具</b>：渲染报错原样交回</li>
+            <li><b>交段即结束</b>：结尾只回一行；工具调用和渲染次数都设上限</li>
+            <li><b>上下文瘦身</b>：逐字时间戳压缩后再给，能用查询函数代替的不放进上下文</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 缓存 -->
+  <section class="area" id="area-cache">
+    <div class="area-head"><h2>缓存</h2><p>共用说明只写一次、各段读同一份缓存，缓存只按 5 分钟价写</p></div>
+    <div class="step"><i>1</i>收益</div>
+    <div class="gains" data-area="cache"></div>
+    <div class="two">
+      <div>
+        <div class="step"><i>2</i>为什么本来贵</div>
+        <div class="panel">
+          <h3>改之前：一部 4 个镜头的片子</h3>
+          <div class="path">
+            <div class="node">第 1 段<small>写入说明</small></div>
+            <div class="link slow">没共享</div>
+            <div class="node">第 2–4 段<small>读到 0 / 0 / 1,273</small></div>
+            <div class="link slow">重写</div>
+            <div class="node hot">每段写 1 万多<small>按 1 小时价</small></div>
+          </div>
+          <ul class="reasons">
+            <li>请求没写缓存时长，中转站<b>自动升级成 1 小时</b>，写入价从 1.25 倍涨到 2 倍；占制作成本 <b>61%</b></li>
+            <li>中转站有多个账号，各段落到不同账号，<b>缓存按账号隔离</b></li>
+            <li>各段第一条消息不完全相同；中转站限制断点数量，<b>共用块上的断点被删掉</b></li>
+            <li>检查这类小调用没打断点，<b>整条请求按 1 小时写</b></li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="step"><i>3</i>怎么做的</div>
+        <div class="panel">
+          <h3>改之后：一部 4 个镜头的片子</h3>
+          <div class="path">
+            <div class="node">第 1 段<small>先放，写共用块</small></div>
+            <div class="link fast">同一账号</div>
+            <div class="node">第 2–4 段<small>各读 12,510</small></div>
+            <div class="link fast">只补写</div>
+            <div class="node hot">每段写约 5 千<small>按 5 分钟价</small></div>
+          </div>
+          <ul class="hows">
+            <li><b>每个请求显式写 5 分钟</b>：包括检查这类很小的调用</li>
+            <li><b>共用说明逐字相同、放在最前</b>：只在共用块上打断点，按中转站的数量限制排布</li>
+            <li><b>系统提示不变</b>：任务、标题、分镜这类会变的内容放消息末尾，变了才追加</li>
+            <li><b>先放第一段</b>：它开始回复、共用块已写进缓存后，再放其余段</li>
+            <li><b>同一部片子固定到一个账号</b>：请求带会话亲和标识</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 导演 · 检查 · 止损 -->
+  <section class="area" id="area-guard">
+    <div class="area-head"><h2>导演 · 检查 · 止损</h2><p>导演一次写对，检查交给程序，注定失败的花费挡在入口</p></div>
+    <div class="step"><i>1</i>收益</div>
+    <div class="gains" data-area="guard"></div>
+    <div class="two">
+      <div>
+        <div class="step"><i>2</i>为什么本来贵</div>
+        <div class="panel">
+          <h3>改之前</h3>
+          <div class="path">
+            <div class="node">导演写分镜<small>不知道上限</small></div>
+            <div class="link slow">超限</div>
+            <div class="node">被打回<small>英文 2–4 次</small></div>
+            <div class="link slow">重写</div>
+            <div class="node hot">整份重写<small>一次大输出</small></div>
+          </div>
+          <ul class="reasons">
+            <li>长片的导演费用曾占<b>整片四成</b>：旁白超上限被打回，整份分镜重写</li>
+            <li>分镜落地后还要<b>多花一次调用</b>说「请确认」</li>
+            <li>检查调用的输出上限 400 包含思考 token：200 次里 <b>51 次截断、18 次空回答</b>，等于没查</li>
+            <li>沙箱跑不动的重 3D 风格照样开做：<b>6 部只成 1 部</b>；一轮 23 部 WebGL 片只成 2 部，<b>$40.79</b> 大多白花</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="step"><i>3</i>怎么做的</div>
+        <div class="panel">
+          <h3>改之后</h3>
+          <div class="path">
+            <div class="node">硬限制写进提示<small>旁白、字数、镜头</small></div>
+            <div class="link fast">一次</div>
+            <div class="node">写对<small>不再打回</small></div>
+            <div class="link fast">落地</div>
+            <div class="node hot">本轮结束<small>不再追问</small></div>
+          </div>
+          <ul class="hows">
+            <li><b>导演</b>：旁白总量、每句字数、片长和镜头规则事先写进提示；查资料交给便宜模型，只交回简报和来源</li>
+            <li><b>检查</b>：布局自检、画面是否在动用程序测；看图只看缩略图，一次报全并分出必须修和只打标；返工轮数封顶</li>
+            <li><b>检查上限</b>：输出上限 400 → 1,500，截断不再出现</li>
+            <li><b>止损</b>：按已画帧数推算完成时刻，晚于截止立刻停；重 3D 风格在入口拒绝；平台原因的重试不占模型重试次数</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 现在钱花在哪 -->
+  <section class="block">
+    <h2>现在钱花在哪</h2>
+    <p class="lead">30 部成片、5 个风格、30–300 秒，实测；下一步的空间也在这里</p>
+    <div class="card mix" id="mix"></div>
+  </section>
+
+  <!-- 质量代价与应对 -->
+  <section class="block">
+    <h2>质量代价与应对</h2>
+    <p class="lead">每一刀都用同一份分镜对比画面；量出来的代价，都补了平台层的检查</p>
+    <div class="gains" data-area="quality"></div>
+  </section>
+
+  <!-- 看过但没采用 -->
+  <section class="block">
+    <h2>算过但没采用的省法</h2>
+    <p class="lead">省得多，但质量代价负责人不接受；连同理由记下，后来的人不必重复提</p>
+    <ul class="card open">
+      <li><b>换便宜一档的模型</b><span>同一份分镜制作成本 <b class="num">$1.050 → $0.393（−63%）</b>，但画面信息明显变少</span><em>没采用</em></li>
+      <li><b>去掉看图后的返工</b><span>不返工的话，300 秒片约 <b>三分之一</b>的概率至少带一处严重毛病</span><em>保留返工；只考虑收紧误报规则（约省 4.5%）</em></li>
+      <li><b>调售价倍数</b><span>是定价问题，不是成本优化</span><em>和成本数字分开汇报</em></li>
+    </ul>
+  </section>
+
+  <!-- 封装成 Skill -->
+  <section class="area" id="skill">
+    <div class="area-head"><h2>封装成一个可复用 Skill <span class="st good"><svg><use href="#i-ok"/></svg>已打包</span></h2><p>从建账、诊断到每一刀的验证都沉淀下来，同类视频 Agent 照着做就能复现</p></div>
+    <div class="skill-card">
+      <div class="skill-top">
+        <div>
+          <span class="skill-name">视频制作 Agent 降成本 SOP</span>
+          <p>适用于「规划 Agent 出分镜 → 每个镜头在沙箱里由制作 Agent 写画面代码、渲染 → 检查返工 → 配音合成」这类流水线；不含产品名、账户和密钥</p>
+        </div>
+        <div class="sstats">
+          <div><b class="num">3</b><span>个文件</span></div>
+          <div><b class="num">5</b><span>步流程</span></div>
+          <div><b class="num">7</b><span>类杠杆</span></div>
+          <div><b class="num">9</b><span>项动作有证据</span></div>
+          <div><b class="num">6</b><span>种常见取舍</span></div>
+        </div>
+      </div>
+      <div class="cover">
+        <div><h3>建账</h3><ul><li>每次调用落一行，按官方价算</li><li>用会话日志补改造前的基线，先对账再批量算</li></ul></div>
+        <div><h3>诊断</h3><ul><li>按秒、按镜头分别拟合，找真正的成本驱动</li><li>查跨段缓存命中和 1 小时写入</li></ul></div>
+        <div><h3>七类杠杆</h3><ul><li>镜头、流程、缓存、导演、检查返工、止损</li><li>最后才动模型和价格</li></ul></div>
+        <div><h3>验证与记账</h3><ul><li>同分镜 A/B、同片长档对比、对所有风格生效</li><li>计量字段与查询模板</li></ul></div>
+      </div>
+      <ol class="flow"><li>建账</li><li>诊断</li><li>按顺序拉杠杆</li><li>验证每一刀</li><li>记账本</li></ol>
+    </div>
+  </section>
+
+  <!-- 规模价值 -->
+  <section class="block">
+    <h2>规模价值</h2>
+    <div class="card scale-card">
+      <h3>省下的钱随出片量放大</h3>
+      <div class="gains" data-area="scale" style="margin-top:16px"></div>
+      <ul class="facts">
+        <li>按上面的单部成本折算，不是线上账单统计</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 还没解决 -->
+  <section class="block">
+    <h2>还没解决</h2>
+    <ul class="card open">
+      <li><b>同片长成本波动</b><span>同样长度的片子上下浮动约 <b class="num">±25%</b>，主要来自返工次数</span><em>下一步：收紧看图误报规则</em></li>
+      <li><b>返工仍占两成</b><span>自检打回、画面不动退回、看图后返工合计占 <b class="num">22%</b></span><em>先量每类返工的价值，再决定砍哪类</em></li>
+      <li><b>1 分钟片的原始基线</b><span>原始流程没做过 1 分钟片，1 分钟的降幅对比的是缓存改造后</span><em>如实标注，不拿拟合冒充实测</em></li>
+    </ul>
+    <details class="data">
+      <summary>查看全部数据</summary>
+      <div class="card"><table class="data" id="table"></table></div>
+    </details>
+  </section>
+
+  <section class="method">
+    <h2>测量口径</h2>
+    <ul>
+      <li>成本一律按官方价目算（旗舰模型：输入 $4/M、5 分钟缓存写入 $5/M、1 小时写入 $8/M、缓存读 $0.2/M、输出 $20/M），不含对用户的计价倍数。</li>
+      <li>样本：原始流程 16 部（10–30 秒，用沙箱会话日志里每条回复的用量还原，先拿一部对账，误差为一次探活调用）；缓存改造后 10 部（6–160 秒）；现在 46 部（9–298 秒，跨 10 余个风格），均来自逐次调用的计费账本。</li>
+      <li>标记：实测 = 真实出片的调用记录；拟合 = 用实测样本做的线性回归；重算 = token 数不变、只换价格档；折算 = 由实测数字相除或相乘得出。</li>
+      <li>原始流程的导演用量没有落库，只有 5 部样本（均值 $0.52）；30 秒片原始整片 = 制作实测 $1.56 + 导演约 $0.3–0.5，取约 $2。</li>
+      <li>剔除：换便宜模型重做的那一部、重画、注定做不成的 3D 风格、WebGL 渲染压测批次。</li>
+    </ul>
+  </section>
+
+  <footer><span>AI 视频制作平台 · Agent 降本优化报告</span><span>2026-11-13</span></footer>
+</div>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+// 收益卡：b = 改之前、a = 改之后；条长按两者较大值为 100%；text 卡只有结论没有对比条；src 是数据来源
+const GAINS = {
+  shot: [
+    { name: '每个镜头的时长', src: '实测', b: 3.1, a: 19, bt: '3.1 秒', at: '19 秒', big: '6.1×', sub: '3.1 秒 → 19 秒',
+      tip: '原始流程 → 现在的平均值<br>镜头越长，每段固定开销被摊得越薄' },
+    { name: '1 分钟片的镜头数', src: '实测', b: 19, a: 3.5, bt: '19 个', at: '3–4 个', big: '−82%', sub: '19 个 → 3–4 个',
+      tip: '原来的切法下一分钟约 19 个镜头；现在每镜至少 15 秒' },
+    { name: '每秒画面的制作成本', src: '折算', b: 0.0735, a: 0.0068, bt: '$0.074', at: '$0.007', big: '−91%', sub: '每镜成本 ÷ 每镜秒数',
+      tip: '原始：$0.228 ÷ 3.1 秒；现在：$0.129 ÷ 19 秒<br>是平均值相除，看量级' },
+  ],
+  flow: [
+    { name: '每个镜头的模型调用', src: '实测', b: 8.2, a: 3.5, bt: '8.2 次', at: '3.5 次', big: '−57%', sub: '含返工和检查',
+      tip: '缓存改造后 → 现在<br>原始流程为 7.9 次' },
+    { name: '每个镜头的制作成本', src: '实测', b: 0.228, a: 0.129, bt: '$0.228', at: '$0.129', big: '−43%', sub: '同时镜头长了 6 倍',
+      tip: '原始流程 → 现在<br>镜头时长 3.1 秒 → 19 秒，单镜成本反而更低' },
+    { name: '每次调用的成本', src: '实测', b: 0.024, a: 0.037, bt: '$0.024', at: '$0.037', big: '+54%', plain: true, sub: '每次做的事更多，是预期内的',
+      tip: '缓存改造后 → 现在<br>输出占制作成本 30% → 43%；调用次数降得更多，总账更低' },
+  ],
+  cache: [
+    { name: '同一份分镜 A/B', src: '实测', b: 1.211, a: 1.050, bt: '$1.211', at: '$1.050', big: '−13%', sub: '44 次调用 → 36 次',
+      tip: '4 个镜头、13.8 秒的同一份分镜，新旧流程各出一遍<br>改动：各段共用说明放进系统提示（第一版）' },
+    { name: '1 小时缓存写入的占比', src: '实测', b: 61, a: 0, bt: '61%', at: '0', big: '−100%', sub: '占制作成本 61% → 0',
+      tip: '原始流程 16 部的制作成本里，61% 是 1 小时写入<br>缓存改造后和现在都是 0' },
+    { name: '改按 5 分钟价写', src: '重算', b: 100, a: 77, bt: '100%', at: '77%', big: '−23%', sub: '同样的 token，只换价格档',
+      tip: '把原始流程 16 部的 1 小时写入按 5 分钟价重算' },
+    { name: '第 2–4 段首次缓存读', src: '实测', text: true, hl: true, big: '0 → 12,510', sub: '每段只补写约 5 千，原来每段重写 1 万多',
+      tip: '改之前读到 0 / 0 / 1,273 token；改之后每段都读到 12,510<br>每次看图检查的成本也降了约三分之一' },
+  ],
+  guard: [
+    { name: '导演每部成本', src: '实测', b: 0.52, a: 0.23, bt: '$0.52', at: '$0.23', big: '−56%', sub: '现在 30 秒片只要 $0.12',
+      tip: '原始流程 → 缓存改造后<br>原始只有 5 部样本；现在随片长 $0.12（30 秒）– $0.52（260 秒）' },
+    { name: '检查调用被截断', src: '实测', b: 51, a: 0, bt: '51 / 200 次', at: '0', big: '−100%', sub: '输出上限 400 → 1,500',
+      tip: '原来 200 次检查里 51 次被截断、18 次回答为空，等于没查' },
+    { name: '注定失败的花费', src: '实测', text: true, big: '入口拒绝', sub: '3D 风格 6 部只成 1 部，花费约 1.7 倍',
+      tip: '一轮 23 部 WebGL 片只成 2 部，$40.79 大多白花<br>现在沙箱跑不动的能力在入口拒绝，渲染晚于截止立刻停' },
+  ],
+  quality: [
+    { name: '画面在动的时间', src: '实测', b: 11, a: 68, bt: '11%', at: '68%', big: '11% → 68%', sub: '被退回的句子重做后',
+      tip: '一段压到一两次调用后，很多句旁白只有 0–20% 的时间画面在动（以前 40–100%）<br>应对：渲染后用程序量每句画面是否在动，静止太多就退回一次' },
+    { name: '看图检查查出毛病', src: '实测', text: true, big: '42%', sub: '199 个镜头的第一版；抽 30 个人工看，严重 7%、误报 17%',
+      tip: '人工复核：严重 7%、一般 50%、轻微 27%、误报 17%<br>负责人决定保留返工' },
+    { name: '改提示引出的冲突', src: '实测', text: true, big: '打回 8 次', sub: '一段被连续打回，改成多风格复测',
+      tip: '加了一句「修问题时不许把元素挪离对应的词」，和某风格的自检冲突<br>凡是改了模型看到的内容，都要多风格复测' },
+  ],
+  scale: [
+    { name: '每 1,000 部 30 秒片', src: '折算', b: 2000, a: 420, bt: '$2,000', at: '$420', big: '−$1,580', sub: '模型成本',
+      tip: '按单部约 $2 → $0.42 折算' },
+    { name: '每 1,000 部 1 分钟片', src: '折算', b: 1650, a: 650, bt: '$1,650', at: '$650', big: '−$1,000', sub: '模型成本',
+      tip: '按单部约 $1.65（缓存改造后，拟合）→ $0.65 折算' },
+  ],
+};
+
+// 整片成本：v 为美元；缺的阶段写明原因
+const TIERS = [
+  { t: '10–15 秒', head: '−57%', rows: [
+    { s: 1, v: 1.74, txt: '≈ $1.64–1.84', tip: '制作实测 $1.34（10 部）+ 导演约 $0.3–0.5' },
+    { s: 2, v: 0.75, txt: '$0.75', tip: '实测 5 部' },
+    { s: 3, none: '已不提供，最短 30 秒' } ] },
+  { t: '30 秒', head: '−79%', rows: [
+    { s: 1, v: 2.0, txt: '≈ $1.9–2.1', tip: '制作实测 $1.56（5 部）+ 导演约 $0.3–0.5' },
+    { s: 2, none: '没测' },
+    { s: 3, v: 0.42, txt: '$0.42', tip: '实测 8 部，其中制作 $0.29' } ] },
+  { t: '60 秒', head: '−61%', rows: [
+    { s: 1, none: '没做过' },
+    { s: 2, v: 1.65, txt: '$1.65 拟合', tip: '10 部拟合，R² 0.94' },
+    { s: 3, v: 0.65, txt: '$0.65', tip: '实测 13 部，$0.46–0.78' } ] },
+  { t: '约 90 秒', head: '−63%', rows: [
+    { s: 1, none: '没做过' },
+    { s: 2, v: 2.44, txt: '$2.44', tip: '89 秒实测 1 部' },
+    { s: 3, v: 0.90, txt: '$0.90', tip: '95 秒，实测 5–7 部' } ] },
+  { t: '更长的片子', head: '只有现在', rows: [
+    { s: 3, v: 1.03, txt: '125 秒 $1.03', tip: '实测 5–7 部' },
+    { s: 3, v: 1.42, txt: '190 秒 $1.42', tip: '实测 5–7 部' },
+    { s: 3, v: 2.38, txt: '260 秒 $2.38', tip: '实测 5–7 部' } ] },
+];
+const STAGES = ['', '原始流程', '缓存改造后', '现在'];
+const STAGE_K = ['', '原始', '改造后', '现在'];
+
+const MIX = [
+  ['制作首稿', '每个镜头第一版', 40],
+  ['导演出分镜', '含查资料', 24],
+  ['返工', '自检打回、画面不动退回、看图后返工', 22],
+  ['看图检查', '只看缩略图的小调用', 7],
+  ['配音', '', 7],
+];
+
+const PERSHOT = [
+  ['每个镜头的制作成本', '$0.228', '$0.193', '$0.129'],
+  ['每个镜头的秒数', '3.1', '7.2', '19'],
+  ['每个镜头的调用次数', '7.9', '8.2', '3.5'],
+  ['每次调用的成本', '$0.029', '$0.024', '$0.037'],
+  ['1 小时缓存写入占制作成本', '61%', '0', '0'],
+  ['输出占制作成本', '25%', '30%', '43%'],
+  ['导演每部', '$0.52', '$0.23', '$0.12–0.52'],
+  ['成本主要随什么变（拟合 R²）', '镜头 0.79 / 秒 0.03', '秒 0.93 / 镜头 0.85', '镜头 0.92 / 秒 0.88'],
+];
+
+const TIPS = {};
+const chip = s => `<span class="st ${s === '实测' ? 'good' : 'warn'}"><svg><use href="#i-${s === '实测' ? 'ok' : 'wait'}"/></svg>${s}</span>`;
+function bars(g) {
+  if (g.text) return '';
+  const max = Math.max(g.b, g.a);
+  const w = v => (v / max) * 100;
+  return `<div class="bars">
+    <span class="k">改之前</span><span class="t b"><span style="width:${w(g.b)}%"></span></span><span class="n num">${g.bt}</span>
+    <span class="k">改之后</span><span class="t a"><span style="width:${w(g.a)}%${g.a === 0 ? ';min-width:0' : ''}"></span></span><span class="n num">${g.at}</span>
+  </div>`;
+}
+for (const [area, list] of Object.entries(GAINS)) {
+  document.querySelector(`.gains[data-area="${area}"]`).innerHTML = list.map((g, i) => {
+    const key = `${area}${i}`;
+    const rows = g.text ? '' : `<div class="r"><span><i style="background:var(--before)"></i>改之前</span><b>${g.bt}</b></div>
+      <div class="r"><span><i style="background:var(--after)"></i>改之后</span><b>${g.at}</b></div>`;
+    TIPS[key] = `<h5>${g.name}</h5>${rows}<p>${g.tip}</p>`;
+    // 结论不是收益（如成本上涨）时不用品牌色
+    const plain = (g.text && !g.hl) || g.plain;
+    return `<div class="gain${g.text && !g.hl ? ' text' : ''}" tabindex="0" data-tip="${key}">
+      <div class="lbl"><span>${g.name}</span>${chip(g.src)}</div>
+      <div class="big num${plain ? '' : ' hl'}">${g.big}<small>${g.sub}</small></div>${bars(g)}
+    </div>`;
+  }).join('');
+}
+
+// 各片长共用一个刻度，跨卡片可直接比较
+const MAX = Math.max(...TIERS.flatMap(t => t.rows.map(r => r.v || 0)));
+document.getElementById('tiers').innerHTML = TIERS.map((t, ti) => `<div class="tier">
+  <h3>${t.t}<span class="${t.head.startsWith('−') ? 'hl num' : ''}">${t.head}</span></h3>
+  <div class="sbars">${t.rows.map((r, ri) => {
+    const k = `<span class="k">${STAGE_K[r.s]}</span>`;
+    if (r.none) return `${k}<span class="none">${r.none}</span>`;
+    const key = `tier${ti}-${ri}`;
+    TIPS[key] = `<h5>${t.t} · ${STAGES[r.s]}</h5><div class="r"><span><i class="c${r.s}"></i>整片</span><b>${r.txt}</b></div><p>${r.tip}</p>`;
+    return `${k}<span class="t" tabindex="0" data-tip="${key}" aria-label="${STAGES[r.s]} ${r.txt}"><span class="c${r.s}" style="width:${(r.v / MAX) * 100}%"></span></span><span class="n num">${r.txt}</span>`;
+  }).join('')}</div>
+</div>`).join('');
+
+document.getElementById('pershot').innerHTML = `<thead><tr><th>指标</th><th class="n">原始流程</th><th class="n">缓存改造后</th><th class="n">现在</th></tr></thead>
+  <tbody>${PERSHOT.map(r => `<tr><td>${r[0]}</td><td class="n">${r[1]}</td><td class="n">${r[2]}</td><td class="n now">${r[3]}</td></tr>`).join('')}</tbody>`;
+
+document.getElementById('mix').innerHTML = MIX.map(([n, d, p], i) => {
+  TIPS[`mix${i}`] = `<h5>${n}</h5><div class="r"><span>占整片成本</span><b>${p}%</b></div>${d ? `<p>${d}</p>` : ''}`;
+  return `<div class="mix-row" tabindex="0" data-tip="mix${i}"><span>${n}${d ? `<small>${d}</small>` : ''}</span><span class="t"><span style="width:${p / 40 * 100}%"></span></span><span class="n num">${p}%</span></div>`;
+}).join('');
+
+// 全部数据表：同一份数据，供不看图的读者核对
+const AREA_NAMES = { shot: '镜头切法', flow: '制作流程', cache: '缓存', guard: '导演 · 检查 · 止损', quality: '质量', scale: '规模' };
+document.getElementById('table').innerHTML = `<thead><tr><th>方向</th><th>指标</th><th class="n">改之前</th><th class="n">改之后</th><th class="n">结论</th><th>来源</th></tr></thead>
+  <tbody>${TIERS.flatMap(t => t.rows.filter(r => !r.none).map(r => `<tr><td>整片 · ${t.t}</td><td>${STAGES[r.s]}</td><td class="n" colspan="2">${r.txt}</td><td class="n">${t.head}</td><td>${r.tip}</td></tr>`)).join('')}
+  ${Object.entries(GAINS).flatMap(([a, list]) => list.map(g => `<tr><td>${AREA_NAMES[a]}</td><td>${g.name}</td><td class="n">${g.text ? '—' : g.bt}</td><td class="n">${g.text ? '—' : g.at}</td><td class="n">${g.big}</td><td>${g.src}</td></tr>`)).join('')}</tbody>`;
+
+// 悬停与键盘聚焦共用一个提示层
+const tip = document.getElementById('tip');
+function place(px, py) {
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let nx = px + 14, ny = py + 16;
+  if (nx + w > innerWidth - 8) nx = px - w - 14;
+  if (ny + h > innerHeight - 8) ny = py - h - 16;
+  tip.style.transform = `translate(${Math.max(8, nx)}px, ${Math.max(8, ny)}px)`;
+}
+function show(el, px, py) { tip.innerHTML = TIPS[el.dataset.tip] || ''; tip.classList.add('on'); place(px, py); }
+function hide() { tip.classList.remove('on'); }
+document.addEventListener('pointerover', e => { const el = e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); });
+document.addEventListener('pointermove', e => { if (e.target.closest('[data-tip]') && tip.classList.contains('on')) place(e.clientX, e.clientY); });
+document.addEventListener('pointerout', e => { const el = e.target.closest('[data-tip]'); if (el && !el.contains(e.relatedTarget)) hide(); });
+document.addEventListener('pointerdown', hide);
+addEventListener('scroll', hide, { passive: true });
+document.addEventListener('focusin', e => {
+  const el = e.target.closest('[data-tip]');
+  if (!el) return hide();
+  const r = el.getBoundingClientRect();
+  show(el, r.left + r.width * 0.55, r.top + r.height * 0.6);
+});
+document.addEventListener('focusout', hide);
+
+// 深浅色切换：深色为默认
+document.getElementById('theme').addEventListener('click', () => {
+  const root = document.documentElement;
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+</script>
+</body>
+</html>

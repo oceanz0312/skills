@@ -74,6 +74,6 @@ D1 优化执行 [完整 SOP](references/d1.md)：改造 ORM/Worker/SSR/ServerFn/
 
 将整个 `cloudflare-fullchain-performance/` 目录复制到接收方 AI 工具的 Skill 目录。Claude Code 用户级默认是 `~/.claude/skills/`，项目级可放 `.claude/skills/`；其他工具按其规范安装。`.skill` 文件是包含同一目录的 ZIP 分发包。未安装时也可明确让 AI 读取本文件并执行。
 
-本 Skill 自包含，无需安装同级专项 Skill，也没有接收项目固定域名/账户/密钥依赖。演示报告见 [performance-report.html](performance-report.html)。
+本 Skill 自包含，无需安装同级专项 Skill，也没有接收项目固定域名/账户/密钥依赖。演示报告见 [performance-report.html](performance-report.html)，在线预览：https://raw.githack.com/oceanz0312/skills/main/cloudflare-fullchain-performance/performance-report.html 。
 
 站点是 Next.js + OpenNext、主要问题是全球各地区 TTFB 时，先看同仓库的 `cloudflare-workers-global-perf`（Globalping 多地拨测、OpenNext 缓存、zone 配置与跨平台映射）；两者可以一起用。

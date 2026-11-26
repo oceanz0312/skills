@@ -41,7 +41,8 @@
 | [`claude-cliproxy-vps`](claude-cliproxy-vps/) | 搭美国 VPS + CLIProxyAPI + 静态住宅代理，让 Claude Code 经代理用 Claude Pro 订阅（含省 token 设置） | 可用 |
 | [`karpathy-llm-wiki`](karpathy-llm-wiki/) | Astro-Han 权威 Karpathy LLM Wiki skill（Ingest / Query / Lint；含 Shiper Notion 路径映射） | 可用 |
 | [`cloudflare-workers-global-perf`](cloudflare-workers-global-perf/) | Cloudflare Workers（Next.js/OpenNext/D1）全球提速：含框架背景、可粘贴配置、详尽验证，以及 Vercel/Netlify/Node/Remix/CloudFront/Fastly 等对照 | 可用 |
-| [`cloudflare-fullchain-performance`](cloudflare-fullchain-performance/) | Cloudflare Workers 全链路性能（React/TanStack Start/D1/R2）：网络入口与大陆绕行、D1 副本 + 写后书签、R2 私有视频先鉴权后缓存、公开 HTML 缓存、字体与前端、测量与安全发布；附 [演示报告](cloudflare-fullchain-performance/performance-report.html) | 可用 |
+| [`cloudflare-fullchain-performance`](cloudflare-fullchain-performance/) | Cloudflare Workers 全链路性能（React/TanStack Start/D1/R2）：网络入口与大陆绕行、D1 副本 + 写后书签、R2 私有视频先鉴权后缓存、公开 HTML 缓存、字体与前端、测量与安全发布；附 [演示报告（在线预览）](https://raw.githack.com/oceanz0312/skills/main/cloudflare-fullchain-performance/performance-report.html) | 可用 |
+| [`video-agent-cost-sop`](video-agent-cost-sop/) | 视频制作类 Agent 降模型成本 SOP：先建账、再按杠杆顺序压成本（镜头切法、平台代做杂活、缓存卫生、导演、检查、止损），每步同分镜 A/B 验质量；30 秒片约 $2 → $0.42；附 [演示报告（在线预览）](https://raw.githack.com/oceanz0312/skills/main/video-agent-cost-sop/cost-report.html) | 可用 |
 | [`humanlike-browsing`](humanlike-browsing/) | Agent 操作别人网站浏览器时的拟人化约束：放慢节奏、随机化鼠标/输入/滚动、限频、遇验证就停，降低风控封号风险 | 可用 |
 
 视频类 skill 都用代码出片：HTML Canvas 逐帧绘制 + Playwright 截图 + FFmpeg 合成，Python 负责抠图、校验和 QA。
@@ -121,6 +122,14 @@
 - **脚本与模板**：`scripts/probe.py` 只读 HTTP 探针（分段耗时、缓存状态、可选 Range/SHA 校验）；`scripts/browser_snapshot.js` 页面资源快照；`assets/` 里是请求数据库路由、浏览器/SSR 书签两份可移植模板和执行记录模板。
 - **要点**：「已实现 / 已功能验证 / 已实测加速」三种状态分开报；副本不替代事务和权限；私有文件每次先鉴权再取缓存；一次只改一层、保留前后样本。
 - **和 `cloudflare-workers-global-perf` 的分工**：那个偏 Next.js + OpenNext、全球多地拨测和 zone 配置；这个偏数据一致性（D1 书签）、私有媒体（R2）、大陆链路和发布验收。
+
+### video-agent-cost-sop · 视频制作 Agent 降成本 SOP
+
+- **做什么**：给「导演出分镜 → 每个镜头由制作 agent 写画面代码并渲染 → 检查返工 → 配音合成」这类流水线省 token。先把每次模型调用记进账本，再拟合出成本到底跟镜头数走还是跟片长走，然后按收益从大到小一项项改，每项都用同一份分镜做 A/B 对比。
+- **什么时候用**：要降每分钟成片成本、排查某部片子为什么贵、评估去掉返工或换便宜模型的代价。
+- **文档**：`references/metering.md` 账本字段、查询模板、用会话日志补历史基线；`references/case-study.md` 已脱敏的真实案例（72 部成片，三个阶段对比，每项动作的证据和质量代价）。
+- **要点**：七类杠杆按顺序拉：摊薄每段固定开销（长镜头、镜头数封顶）→ 程序性步骤交给平台 → 缓存卫生（显式 5 分钟 TTL、共用前缀逐字相同、会话固定账号）→ 导演一次写对 → 检查交给程序、返工先量价值 → 止损 → 最后才换模型。数字一律标明是实测、拟合还是重算。
+- **效果**：30 秒片整片约 $2 → $0.42，1 分钟片约 $1.65 → $0.65。
 
 ---
 
