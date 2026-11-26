@@ -52,6 +52,19 @@ b{font-weight:600}
 .hero{padding:52px 0 0}
 .eyebrow{font-size:13px;color:var(--muted)}
 h1{font-size:48px;line-height:1.12;font-weight:600;letter-spacing:-.025em;margin-top:10px}
+/* 首屏右侧：一键复制给 agent 的指令 */
+.hero-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.agent-copy{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none}
+.agent-btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;border-radius:999px;border:0;background:var(--brand);color:#fff;font:600 14px/1 var(--font);cursor:pointer;transition:filter .15s,transform .1s}
+.agent-btn:hover{filter:brightness(1.08)}
+.agent-btn:active{transform:scale(.98)}
+.agent-btn:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
+.agent-btn svg{width:16px;height:16px}
+.agent-btn .done{display:none}
+.agent-btn.copied .idle{display:none}
+.agent-btn.copied .done{display:inline}
+.agent-hint{font-size:12px;color:var(--muted)}
+@media (max-width:760px){.hero-head{flex-direction:column;align-items:flex-start}.agent-copy{align-items:flex-start}}
 .kpis{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:72px;margin-top:44px}
 .kpi b{display:block;font-size:88px;line-height:.9;letter-spacing:-.05em}
 .kpi b{color:var(--brand)}
@@ -216,8 +229,19 @@ footer{display:flex;justify-content:space-between;font-size:12px;color:var(--mut
 
   <!-- 首屏：直接给收益 -->
   <section class="hero">
-    <p class="eyebrow">D1 数据库 · R2 存储 · CDN 与缓存 ｜ 基线 11-06，复测 11-07</p>
-    <h1>重复访问大幅提速</h1>
+    <div class="hero-head">
+      <div>
+        <p class="eyebrow">D1 数据库 · R2 存储 · CDN 与缓存 ｜ 基线 11-06，复测 11-07</p>
+        <h1>重复访问大幅提速</h1>
+      </div>
+      <div class="agent-copy">
+        <button class="agent-btn" id="agent-copy" type="button">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.25" y="5.25" width="8" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.75 5.25V4.5a1.75 1.75 0 0 0-1.75-1.75H4.5A1.75 1.75 0 0 0 2.75 4.5V9a1.75 1.75 0 0 0 1.75 1.75h.75" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+          <span class="idle">一键复制给你的 Agent</span><span class="done" aria-live="polite">已复制，粘贴给你的 Agent</span>
+        </button>
+        <span class="agent-hint">让 AI 按这套方法给你的站点做一次体检</span>
+      </div>
+    </div>
     <div class="kpis">
       <div class="kpi"><b class="num">−65<small>%</small></b><span>4 个已实测场景平均耗时降幅</span></div>
       <div class="kpi"><b class="num">−88<small>%</small></b><span>单项最高：缓存过期后打开页面，快 8.7 倍</span></div>
@@ -550,6 +574,45 @@ document.getElementById('theme').addEventListener('click', () => {
   const root = document.documentElement;
   root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
 });
+</script>
+<script>
+// 一键复制给 agent：复制一段指令，让读者自己的 AI 拉取这个 Skill 并诊断他的站点
+const AGENT_PROMPT = `请帮我分析我的网站在性能上还有哪些可以优化的地方。
+
+1. 先读取这个 Skill，按它的流程来做：
+   https://github.com/oceanz0312/skills/tree/main/cloudflare-fullchain-performance
+   入口文件：https://raw.githubusercontent.com/oceanz0312/skills/main/cloudflare-fullchain-performance/SKILL.md
+   先读 SKILL.md，再按需读取它引用的 references/ 文档。打不开 GitHub 页面时，可以 git clone https://github.com/oceanz0312/skills.git 后读 cloudflare-fullchain-performance/ 目录。
+2. 结合我当前的项目代码和部署配置，按 Skill 的第 1–3 步：理清技术栈和请求链路，对首页和关键页面做只读的基线测量，找出主要瓶颈。站点不在 Cloudflare 上也按同样思路做，把 Cloudflare 专属的部分换成对应平台的做法。
+3. 先给我一份诊断报告：每个瓶颈的证据、建议改法、预期收益和风险，按优先级排序。没测到的写明「未测」，不要估计收益。
+4. 在我确认之前，不要改代码、不要部署、不要改线上配置。`
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    // 剪贴板接口不可用（非安全上下文或被拒）时退回到选中文本复制
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    ta.remove()
+    return ok
+  }
+}
+const agentBtn = document.getElementById('agent-copy')
+let agentTimer
+agentBtn.addEventListener('click', async () => {
+  const ok = await copyText(AGENT_PROMPT)
+  if (!ok) return window.prompt('复制下面这段话，粘贴给你的 Agent：', AGENT_PROMPT)
+  agentBtn.classList.add('copied')
+  clearTimeout(agentTimer)
+  agentTimer = setTimeout(() => agentBtn.classList.remove('copied'), 2400)
+})
 </script>
 </body>
 </html>
